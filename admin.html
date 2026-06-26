@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mailbox Lookup Admin</title>
+    <style>
+        * { box-sizing: border-box; }
+        :root { --bg:#f5f2ec; --ink:#1c211f; --muted:#68726e; --panel:#fffdf8; --line:#ddd5c8; --soft:#f3ecdf; --accent:#146c5c; --accent-dark:#0d4f43; --danger:#b83232; --info:#245c78; --shadow:0 20px 52px rgba(42,35,24,.12); }
+        body { margin:0; min-height:100vh; padding:24px; color:var(--ink); font-family:"Segoe UI",Arial,sans-serif; background:var(--bg); }
+        main { width:min(980px,100%); margin:0 auto; display:grid; gap:18px; }
+        .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow); padding:24px; }
+        .top { display:flex; justify-content:space-between; gap:18px; align-items:end; }
+        h1,h2 { margin:0 0 8px; letter-spacing:0; } h1{font-size:clamp(28px,4vw,42px)} h2{font-size:22px}
+        p { margin:0; color:var(--muted); line-height:1.7; }
+        form { display:grid; gap:14px; }
+        .grid { display:grid; grid-template-columns:1fr 1fr auto; gap:12px; align-items:end; }
+        .login-grid { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:end; }
+        label { display:grid; gap:7px; color:var(--muted); font-size:13px; font-weight:700; }
+        input { width:100%; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); padding:13px 14px; font-size:15px; outline:none; }
+        input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(20,108,92,.14); }
+        button { border:0; border-radius:8px; background:var(--accent); color:#fff; padding:14px 18px; min-height:46px; font-weight:800; cursor:pointer; white-space:nowrap; }
+        button:hover { background:var(--accent-dark); } button:disabled { opacity:.6; cursor:not-allowed; }
+        button.secondary { background:#e8f3ef; color:var(--accent-dark); border:1px solid rgba(20,108,92,.2); }
+        button.danger { background:var(--danger); }
+        .status { min-height:22px; color:var(--muted); font-size:14px; margin-top:12px; }
+        .status.success { color:var(--accent-dark); } .status.error{color:var(--danger)} .status.info{color:var(--info)}
+        .hide { display:none; }
+        .list { display:grid; gap:10px; margin-top:16px; }
+        .item { display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:14px; background:var(--soft); }
+        .email { word-break:break-all; font-weight:800; }
+        .empty { color:var(--muted); padding:12px 0; }
+        .note { color:var(--muted); font-size:13px; line-height:1.7; margin-top:12px; }
+        @media (max-width:760px) { body{padding:16px}.top,.grid,.login-grid,.item{grid-template-columns:1fr;display:grid} }
+    </style>
+</head>
+<body>
+    <main>
+        <section class="panel top"><div><h1>Mailbox Lookup Admin</h1><p>Manage emails that are allowed to query OpenAI verification codes.</p></div><div><a href="./privacy.html">Add private email</a> | <a href="./index.html">Lookup page</a></div></section>
+        <section class="panel">
+            <h2>Admin Login</h2><p>Use the admin password from config/mail.php.</p>
+            <form id="loginForm" autocomplete="off"><div class="login-grid"><label>Admin password<input id="adminPassword" type="password" autocomplete="new-password" required /></label><button id="loadBtn" type="submit">Login</button></div></form>
+            <div id="status" class="status">Waiting for login.</div>
+        </section>
+        <section id="managePanel" class="panel hide">
+            <h2>Add or Update Account</h2><p>Saving overwrites the query password for this email. New passwords are stored as password_hash values.</p>
+            <form id="accountForm" autocomplete="off"><div class="grid"><label>Email<input id="emailInput" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="name@example.com" required /></label><label>Query password<input id="passwordInput" type="password" autocomplete="new-password" required /></label><button id="saveBtn" type="submit">Save</button></div></form>
+            <div class="note">Saved query passwords are not displayed. Enter a new password to replace an existing one.</div>
+        </section>
+        <section id="listPanel" class="panel hide"><h2>Configured Accounts</h2><div id="accountList" class="list"></div></section>
+    </main>
+    <script>
+        const loginForm = document.getElementById("loginForm");
+        const accountForm = document.getElementById("accountForm");
+        const adminPasswordInput = document.getElementById("adminPassword");
+        const emailInput = document.getElementById("emailInput");
+        const passwordInput = document.getElementById("passwordInput");
+        const loadBtn = document.getElementById("loadBtn");
+        const saveBtn = document.getElementById("saveBtn");
+        const statusEl = document.getElementById("status");
+        const managePanel = document.getElementById("managePanel");
+        const listPanel = document.getElementById("listPanel");
+        const accountList = document.getElementById("accountList");
+        let currentAdminPassword = "";
+        function setStatus(type, message) { statusEl.className = "status" + (type ? " " + type : ""); statusEl.textContent = message; }
+        function setPanelsVisible(visible) { managePanel.classList.toggle("hide", !visible); listPanel.classList.toggle("hide", !visible); if (!visible) accountList.replaceChildren(); }
+        async function adminRequest(action, payload = {}) { const response = await fetch("./api/admin.php", { method:"POST", headers:{"Content-Type":"application/json","Cache-Control":"no-cache"}, body:JSON.stringify({action, admin_password:currentAdminPassword, ...payload}) }); const result = await response.json(); if (!response.ok || !result.success) throw new Error(result.message || "Operation failed."); return result; }
+        function renderAccounts(accounts) { accountList.replaceChildren(); const items = Array.isArray(accounts) ? accounts : []; if (!items.length) { const empty = document.createElement("div"); empty.className = "empty"; empty.textContent = "No accounts configured."; accountList.append(empty); return; } items.forEach((item) => { const email = String(item.email || ""); const row = document.createElement("div"); row.className = "item"; const emailEl = document.createElement("div"); emailEl.className = "email"; emailEl.textContent = email; const editBtn = document.createElement("button"); editBtn.type = "button"; editBtn.className = "secondary"; editBtn.textContent = "Edit password"; editBtn.addEventListener("click", () => { emailInput.value = email; passwordInput.value = ""; passwordInput.focus(); setStatus("info", "Email loaded. Enter a new query password and save."); }); const deleteBtn = document.createElement("button"); deleteBtn.type = "button"; deleteBtn.className = "danger"; deleteBtn.textContent = "Delete"; deleteBtn.addEventListener("click", () => deleteAccount(email)); row.append(emailEl, editBtn, deleteBtn); accountList.append(row); }); }
+        async function deleteAccount(email) { if (!confirm(`Delete ${email}?`)) return; try { const result = await adminRequest("delete", {email}); renderAccounts(result.data.accounts || []); setStatus("success", "Deleted."); } catch (error) { setStatus("error", error.message || "Delete failed."); } }
+        loginForm.addEventListener("submit", async (event) => { event.preventDefault(); const password = adminPasswordInput.value.trim(); if (!password) return setStatus("error", "Admin password is required."); currentAdminPassword = password; loadBtn.disabled = true; loadBtn.textContent = "Loading..."; try { const result = await adminRequest("list"); setPanelsVisible(true); renderAccounts(result.data.accounts || []); setStatus("success", "Admin loaded."); } catch (error) { currentAdminPassword = ""; setPanelsVisible(false); setStatus("error", error.message || "Login failed."); } finally { loadBtn.disabled = false; loadBtn.textContent = "Login"; } });
+        accountForm.addEventListener("submit", async (event) => { event.preventDefault(); const email = emailInput.value.trim(); const password = passwordInput.value.trim(); if (!email || !password) return setStatus("error", "Email and query password are required."); saveBtn.disabled = true; saveBtn.textContent = "Saving..."; try { const result = await adminRequest("save", {email, access_password:password}); renderAccounts(result.data.accounts || []); emailInput.value = ""; passwordInput.value = ""; setStatus("success", "Saved."); } catch (error) { setStatus("error", error.message || "Save failed."); } finally { saveBtn.disabled = false; saveBtn.textContent = "Save"; } });
+        setPanelsVisible(false);
+    </script>
+</body>
+</html>

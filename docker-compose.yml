@@ -1,0 +1,10 @@
+services:
+  youjian:
+    build: .
+    image: youjian-code-lookup:latest
+    container_name: youjian-code-lookup
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./config:/var/www/html/config

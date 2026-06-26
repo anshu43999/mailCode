@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add iCloud Private Email</title>
+    <style>
+        * { box-sizing: border-box; }
+        :root {
+            --bg:#eef3ef; --ink:#14201d; --muted:#63736d; --panel:#fffefa; --line:#d9ded4;
+            --soft:#eff5ed; --accent:#0d6b57; --accent-dark:#094d3f; --danger:#b83232;
+            --gold:#9b6a16; --shadow:0 24px 60px rgba(28,45,38,.13);
+        }
+        body { margin:0; min-height:100vh; padding:24px; color:var(--ink); font-family:"Segoe UI",Arial,sans-serif; background:linear-gradient(140deg,rgba(13,107,87,.13),transparent 34%),linear-gradient(320deg,rgba(155,106,22,.11),transparent 30%),var(--bg); }
+        main { width:min(1040px,100%); margin:0 auto; display:grid; gap:18px; }
+        .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow); padding:24px; }
+        .hero { display:grid; grid-template-columns:1.2fr .8fr; gap:20px; align-items:end; }
+        h1,h2 { margin:0 0 8px; letter-spacing:0; }
+        h1 { font-size:clamp(30px,5vw,54px); line-height:1; }
+        h2 { font-size:22px; }
+        p { margin:0; color:var(--muted); line-height:1.7; }
+        a { color:var(--accent-dark); font-weight:800; }
+        .steps { display:grid; gap:10px; color:var(--muted); font-size:14px; }
+        .step { display:flex; gap:10px; align-items:flex-start; }
+        .num { width:24px; height:24px; border-radius:999px; display:grid; place-items:center; flex:none; background:#e2f2ec; color:var(--accent-dark); font-weight:900; font-size:12px; }
+        form { display:grid; gap:14px; }
+        .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+        .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+        label { display:grid; gap:7px; color:var(--muted); font-size:13px; font-weight:800; }
+        input { width:100%; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); padding:13px 14px; font-size:15px; outline:none; }
+        input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(13,107,87,.14); }
+        button { border:0; border-radius:8px; background:var(--accent); color:white; padding:13px 16px; min-height:44px; font-weight:900; cursor:pointer; }
+        button:hover { background:var(--accent-dark); }
+        button:disabled { opacity:.6; cursor:not-allowed; }
+        button.secondary { color:var(--accent-dark); background:#e7f3ef; border:1px solid rgba(13,107,87,.22); }
+        .status { min-height:22px; color:var(--muted); font-size:14px; }
+        .status.success { color:var(--accent-dark); }
+        .status.error { color:var(--danger); }
+        .card { background:var(--soft); border:1px solid var(--line); border-radius:8px; padding:16px; display:grid; gap:10px; }
+        .pill { display:inline-flex; width:max-content; align-items:center; border:1px solid rgba(155,106,22,.24); color:var(--gold); background:#fff7e6; padding:7px 10px; border-radius:999px; font-size:12px; font-weight:900; }
+        .saved { display:none; }
+        .saved.show { display:grid; }
+        .mono { font-family:Consolas,Menlo,monospace; word-break:break-all; }
+        @media (max-width:820px) { body{padding:16px}.hero,.grid{grid-template-columns:1fr}.panel{padding:20px}.actions{display:grid} }
+    </style>
+</head>
+<body>
+    <main>
+        <section class="panel hero">
+            <div>
+                <h1>Add iCloud Private Email</h1>
+                <p>Register a Hide My Email address here after creating it in iCloud. The system will use the same mailbox reader and allow this alias to query OpenAI codes.</p>
+            </div>
+            <div class="steps">
+                <div class="step"><span class="num">1</span><span>Create the Hide My Email alias in iCloud settings.</span></div>
+                <div class="step"><span class="num">2</span><span>Paste that alias below and set a query password.</span></div>
+                <div class="step"><span class="num">3</span><span>Use the alias on the lookup page when checking codes.</span></div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Private Email Entry</h2>
+            <p>The label is only for your own tracking on this page. The current JSON store saves the email and password hash.</p>
+            <form id="privacyForm" autocomplete="off">
+                <div class="grid">
+                    <label>Admin password<input id="adminPassword" type="password" autocomplete="new-password" required /></label>
+                    <label>Private email alias<input id="emailInput" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="random-alias@icloud.com" required /></label>
+                    <label>Label or purpose<input id="labelInput" type="text" autocomplete="off" placeholder="OpenAI account A" /></label>
+                    <label>Query password<input id="passwordInput" type="password" autocomplete="new-password" required /></label>
+                </div>
+                <div class="actions">
+                    <button id="saveBtn" type="submit">Save private email</button>
+                    <button id="generateBtn" class="secondary" type="button">Generate password</button>
+                    <button id="toggleBtn" class="secondary" type="button">Show password</button>
+                    <a href="./admin.html">Admin list</a>
+                    <a href="./index.html">Lookup page</a>
+                </div>
+                <div id="status" class="status">Ready.</div>
+            </form>
+        </section>
+
+        <section id="savedPanel" class="panel saved">
+            <span class="pill">Saved</span>
+            <div class="card">
+                <div><strong>Email</strong><div id="savedEmail" class="mono">-</div></div>
+                <div><strong>Label</strong><div id="savedLabel">-</div></div>
+                <div class="actions"><button id="useBtn" type="button">Open lookup with this email</button><button id="resetBtn" class="secondary" type="button">Add another</button></div>
+            </div>
+        </section>
+    </main>
+    <script>
+        const form = document.getElementById("privacyForm");
+        const adminPasswordInput = document.getElementById("adminPassword");
+        const emailInput = document.getElementById("emailInput");
+        const labelInput = document.getElementById("labelInput");
+        const passwordInput = document.getElementById("passwordInput");
+        const saveBtn = document.getElementById("saveBtn");
+        const generateBtn = document.getElementById("generateBtn");
+        const toggleBtn = document.getElementById("toggleBtn");
+        const statusEl = document.getElementById("status");
+        const savedPanel = document.getElementById("savedPanel");
+        const savedEmail = document.getElementById("savedEmail");
+        const savedLabel = document.getElementById("savedLabel");
+        const useBtn = document.getElementById("useBtn");
+        const resetBtn = document.getElementById("resetBtn");
+        let lastSavedEmail = "";
+
+        function setStatus(type, message) {
+            statusEl.className = "status" + (type ? " " + type : "");
+            statusEl.textContent = message;
+        }
+
+        function generatePassword() {
+            const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+            const bytes = new Uint8Array(18);
+            crypto.getRandomValues(bytes);
+            let value = "";
+            bytes.forEach((byte) => { value += alphabet[byte % alphabet.length]; });
+            return value;
+        }
+
+        generateBtn.addEventListener("click", () => {
+            passwordInput.value = generatePassword();
+            passwordInput.type = "text";
+            toggleBtn.textContent = "Hide password";
+            setStatus("info", "Generated a query password. Store it before leaving this page.");
+        });
+
+        toggleBtn.addEventListener("click", () => {
+            const visible = passwordInput.type === "text";
+            passwordInput.type = visible ? "password" : "text";
+            toggleBtn.textContent = visible ? "Show password" : "Hide password";
+        });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const adminPassword = adminPasswordInput.value.trim();
+            const email = emailInput.value.trim().toLowerCase();
+            const password = passwordInput.value.trim();
+            const label = labelInput.value.trim();
+            if (!adminPassword || !email || !password) {
+                setStatus("error", "Admin password, private email, and query password are required.");
+                return;
+            }
+            saveBtn.disabled = true;
+            saveBtn.textContent = "Saving...";
+            try {
+                const response = await fetch("./api/admin.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+                    body: JSON.stringify({ action: "save", admin_password: adminPassword, email, access_password: password }),
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || "Save failed.");
+                }
+                lastSavedEmail = email;
+                savedEmail.textContent = email;
+                savedLabel.textContent = label || "-";
+                savedPanel.classList.add("show");
+                emailInput.value = "";
+                labelInput.value = "";
+                passwordInput.value = "";
+                passwordInput.type = "password";
+                toggleBtn.textContent = "Show password";
+                setStatus("success", "Private email saved.");
+            } catch (error) {
+                setStatus("error", error.message || "Save failed.");
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "Save private email";
+            }
+        });
+
+        useBtn.addEventListener("click", () => {
+            const url = new URL("./index.html", window.location.href);
+            if (lastSavedEmail) {
+                url.searchParams.set("email", lastSavedEmail);
+            }
+            window.location.href = url.toString();
+        });
+
+        resetBtn.addEventListener("click", () => {
+            savedPanel.classList.remove("show");
+            emailInput.focus();
+        });
+    </script>
+</body>
+</html>

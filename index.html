@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenAI Code Lookup</title>
+    <style>
+        * { box-sizing: border-box; }
+        :root { --bg:#f4f1ea; --ink:#18201f; --muted:#64706c; --panel:#fffdf8; --line:#ded6c8; --accent:#146c5c; --accent-dark:#0d4f43; --danger:#ba3030; --warn:#b56a00; --shadow:0 22px 55px rgba(42,35,24,.14); }
+        body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px; color:var(--ink); font-family:"Segoe UI",Arial,sans-serif; background:linear-gradient(135deg,rgba(20,108,92,.12),transparent 34%),linear-gradient(315deg,rgba(181,106,0,.11),transparent 32%),var(--bg); }
+        main { width:min(720px,100%); display:grid; gap:18px; }
+        .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow); padding:28px; }
+        .head { display:flex; justify-content:space-between; gap:20px; align-items:start; margin-bottom:22px; }
+        h1 { margin:0 0 8px; font-size:clamp(26px,4vw,40px); letter-spacing:0; }
+        p { margin:0; color:var(--muted); line-height:1.7; }
+        .badge { flex:none; border:1px solid rgba(20,108,92,.24); color:var(--accent-dark); padding:8px 10px; border-radius:999px; font-size:12px; font-weight:700; background:#edf8f4; }
+        form { display:grid; grid-template-columns:1fr 220px auto; gap:12px; align-items:end; }
+        label { display:grid; gap:7px; color:var(--muted); font-size:13px; font-weight:700; }
+        input { width:100%; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); padding:13px 14px; font-size:15px; outline:none; }
+        input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(20,108,92,.14); }
+        button { border:0; border-radius:8px; background:var(--accent); color:white; padding:14px 18px; font-size:14px; font-weight:800; cursor:pointer; min-height:46px; }
+        button:hover { background:var(--accent-dark); }
+        button:disabled { opacity:.6; cursor:not-allowed; }
+        .status { min-height:22px; color:var(--muted); font-size:14px; margin-top:14px; }
+        .status.success { color:var(--accent-dark); } .status.error { color:var(--danger); } .status.info { color:#245c78; }
+        .result { display:grid; gap:16px; }
+        .row { display:flex; justify-content:space-between; gap:16px; color:var(--muted); font-size:14px; }
+        .email { color:var(--ink); word-break:break-all; text-align:right; }
+        .code { border:1px solid var(--line); border-radius:8px; min-height:118px; display:grid; place-items:center; background:#fbf7ee; font-size:clamp(42px,9vw,72px); font-weight:900; letter-spacing:.08em; user-select:all; }
+        .code.empty { color:var(--warn); font-size:clamp(20px,4vw,28px); letter-spacing:0; }
+        @media (max-width:760px) { body{padding:16px}.panel{padding:22px}.head{display:grid}form{grid-template-columns:1fr}.row{display:grid}.email{text-align:left} }
+    </style>
+</head>
+<body>
+    <main>
+        <section class="panel">
+            <div class="head"><div><h1>OpenAI Code Lookup</h1><p>Enter an email and query password. The page polls the backend mailbox and copies the latest code when found.</p><p><a href="./privacy.html">Add iCloud private email</a></p></div><div class="badge">3s polling</div></div>
+            <form id="queryForm" autocomplete="off">
+                <label>Email<input id="targetEmail" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="name@example.com" required /></label>
+                <label>Query password<input id="accessPassword" type="password" autocomplete="new-password" required /></label>
+                <button id="submitBtn" type="submit">Start</button>
+            </form>
+            <div id="status" class="status">Waiting for input.</div>
+        </section>
+        <section class="panel result" aria-live="polite">
+            <div class="row"><span>Target email</span><strong id="resultEmail" class="email">-</strong></div>
+            <div id="resultCode" class="code empty">Waiting</div>
+            <div class="row"><span>Email time</span><strong id="resultUpdatedAt">-</strong></div>
+            <div class="row"><span>Last check</span><strong id="resultCheckedAt">-</strong></div>
+        </section>
+    </main>
+    <script>
+        const apiUrl = "./api/code.php";
+        const pollIntervalMs = 3000;
+        const queryForm = document.getElementById("queryForm");
+        const targetEmailInput = document.getElementById("targetEmail");
+        const accessPasswordInput = document.getElementById("accessPassword");
+        const submitBtn = document.getElementById("submitBtn");
+        const statusEl = document.getElementById("status");
+        const resultEmailEl = document.getElementById("resultEmail");
+        const resultCodeEl = document.getElementById("resultCode");
+        const resultUpdatedAtEl = document.getElementById("resultUpdatedAt");
+        const resultCheckedAtEl = document.getElementById("resultCheckedAt");
+        let pollingTimer = null, currentEmail = "", currentPassword = "", isFetching = false, autoStopped = false, audioContext = null;
+        function setStatus(type, message) { statusEl.className = "status" + (type ? " " + type : ""); statusEl.textContent = message; }
+        function setButton(label, disabled) { submitBtn.textContent = label; submitBtn.disabled = disabled; }
+        function renderIdle(email = "") { resultEmailEl.textContent = email || "-"; resultCodeEl.textContent = email ? "Waiting for code" : "Waiting"; resultCodeEl.className = "code empty"; resultUpdatedAtEl.textContent = "-"; resultCheckedAtEl.textContent = "-"; }
+        function renderResult(data) { const code = String(data.verification_code || ""); resultEmailEl.textContent = data.target_email || currentEmail || "-"; resultUpdatedAtEl.textContent = data.updated_at || "-"; resultCheckedAtEl.textContent = data.checked_at || "-"; resultCodeEl.textContent = code || "Waiting for code"; resultCodeEl.className = code ? "code" : "code empty"; }
+        function stopPolling() { if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; } }
+        function startPolling() { stopPolling(); pollingTimer = setInterval(() => fetchLatestCode(false), pollIntervalMs); }
+        async function ensureAudioReady() { const AudioCtx = window.AudioContext || window.webkitAudioContext; if (!AudioCtx) return false; audioContext = audioContext || new AudioCtx(); if (audioContext.state === "suspended") { try { await audioContext.resume(); } catch (_) { return false; } } return audioContext.state === "running"; }
+        async function playSuccessTone() { if (!(await ensureAudioReady())) return; const now = audioContext.currentTime; [880,1174].forEach((frequency,index) => { const osc = audioContext.createOscillator(); const gain = audioContext.createGain(); const startAt = now + index * .16; const endAt = startAt + .11; osc.type = "sine"; osc.frequency.setValueAtTime(frequency,startAt); gain.gain.setValueAtTime(.0001,startAt); gain.gain.exponentialRampToValueAtTime(.16,startAt+.02); gain.gain.exponentialRampToValueAtTime(.0001,endAt); osc.connect(gain); gain.connect(audioContext.destination); osc.start(startAt); osc.stop(endAt); }); }
+        async function copyCode(code) { try { if (code && navigator.clipboard) await navigator.clipboard.writeText(code); } catch (_) {} }
+        async function fetchLatestCode(manual) { if (!currentEmail || !currentPassword || isFetching) return; isFetching = true; setButton("Loading...", true); if (manual) setStatus("info", "Checking mailbox..."); try { const response = await fetch(apiUrl, { method:"POST", headers:{"Content-Type":"application/json","Cache-Control":"no-cache"}, body:JSON.stringify({target_email:currentEmail, access_password:currentPassword}) }); const result = await response.json(); if (!response.ok || !result.success) throw new Error(result.message || "Lookup failed."); renderResult(result.data || {}); if (result.data && result.data.found) { autoStopped = true; stopPolling(); await copyCode(result.data.verification_code || ""); await playSuccessTone(); setStatus("success", "Code found. Copy was attempted."); } else { setStatus("info", result.message || "No code yet. Polling..."); } } catch (error) { setStatus("error", error.message || "Lookup failed. The next poll will retry."); } finally { isFetching = false; setButton(currentEmail ? "Refresh" : "Start", false); } }
+        queryForm.addEventListener("submit", (event) => { event.preventDefault(); const email = targetEmailInput.value.trim(); const password = accessPasswordInput.value.trim(); if (!email || !password) { setStatus("error", "Email and query password are required."); return; } autoStopped = false; currentEmail = email; currentPassword = password; void ensureAudioReady(); renderIdle(currentEmail); fetchLatestCode(true); startPolling(); });
+        const initialEmail = new URLSearchParams(window.location.search).get("email");
+        if (initialEmail) { targetEmailInput.value = initialEmail; renderIdle(initialEmail); }
+        document.addEventListener("visibilitychange", () => { if (!currentEmail || autoStopped) return; document.hidden ? stopPolling() : (fetchLatestCode(false), startPolling()); });
+        window.addEventListener("beforeunload", stopPolling);
+        renderIdle();
+    </script>
+</body>
+</html>

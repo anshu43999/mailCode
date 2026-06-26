@@ -1,0 +1,11 @@
+.agents/
+.codex/
+.tmp/
+tmp/
+node_modules/
+*.log
+
+config/mail.php
+config/access_accounts.json
+lib/mail_reader.php
+docker-compose.override.yml
