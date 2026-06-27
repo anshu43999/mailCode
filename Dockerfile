@@ -1,7 +1,7 @@
-FROM php:8.3-apache
+FROM php:8.3-apache-bookworm
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libc-client-dev libkrb5-dev ca-certificates \
+    && apt-get install -y --no-install-recommends libc-client2007e-dev libkrb5-dev libssl-dev ca-certificates \
     && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
     && docker-php-ext-install imap \
     && a2enmod rewrite headers \
