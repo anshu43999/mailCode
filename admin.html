@@ -293,6 +293,38 @@
             statusEl.textContent = message;
         }
 
+        async function copyText(text) {
+            const value = String(text || "");
+            if (!value) return false;
+
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    await navigator.clipboard.writeText(value);
+                    return true;
+                } catch (_) {}
+            }
+
+            const textarea = document.createElement("textarea");
+            textarea.value = value;
+            textarea.setAttribute("readonly", "");
+            textarea.style.position = "fixed";
+            textarea.style.left = "-1000px";
+            textarea.style.top = "-1000px";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+            let copied = false;
+            try {
+                copied = document.execCommand("copy");
+            } catch (_) {
+                copied = false;
+            }
+            textarea.remove();
+            return copied;
+        }
+
         function generatePassword(length = 16) {
             const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
             const bytes = new Uint8Array(length);
@@ -363,10 +395,9 @@
                 copyBtn.textContent = "复制账号和密码";
                 copyBtn.addEventListener("click", async () => {
                     const text = `${email}\t${password}`;
-                    try {
-                        await navigator.clipboard.writeText(text);
+                    if (await copyText(text)) {
                         setStatus("success", "已复制账号和密码。");
-                    } catch (error) {
+                    } else {
                         setStatus("error", "复制失败，请手动选择文本。");
                     }
                 });

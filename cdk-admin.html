@@ -267,6 +267,38 @@
             statusEl.textContent = message;
         }
 
+        async function copyText(text) {
+            const value = String(text || "");
+            if (!value) return false;
+
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    await navigator.clipboard.writeText(value);
+                    return true;
+                } catch (_) {}
+            }
+
+            const textarea = document.createElement("textarea");
+            textarea.value = value;
+            textarea.setAttribute("readonly", "");
+            textarea.style.position = "fixed";
+            textarea.style.left = "-1000px";
+            textarea.style.top = "-1000px";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+            let copied = false;
+            try {
+                copied = document.execCommand("copy");
+            } catch (_) {
+                copied = false;
+            }
+            textarea.remove();
+            return copied;
+        }
+
         function setPanelsVisible(visible) {
             managePanel.classList.toggle("hide", !visible);
             listPanel.classList.toggle("hide", !visible);
@@ -339,10 +371,9 @@
                 copyBtn.className = "secondary";
                 copyBtn.textContent = "复制 CDK";
                 copyBtn.addEventListener("click", async () => {
-                    try {
-                        await navigator.clipboard.writeText(code);
+                    if (await copyText(code)) {
                         setStatus("success", "CDK 已复制。");
-                    } catch (_) {
+                    } else {
                         setStatus("error", "复制失败，请手动选择 CDK。");
                     }
                 });

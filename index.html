@@ -295,6 +295,38 @@
             submitBtn.disabled = disabled;
         }
 
+        async function copyText(text) {
+            const value = String(text || "");
+            if (!value) return false;
+
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    await navigator.clipboard.writeText(value);
+                    return true;
+                } catch (_) {}
+            }
+
+            const textarea = document.createElement("textarea");
+            textarea.value = value;
+            textarea.setAttribute("readonly", "");
+            textarea.style.position = "fixed";
+            textarea.style.left = "-1000px";
+            textarea.style.top = "-1000px";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+            let copied = false;
+            try {
+                copied = document.execCommand("copy");
+            } catch (_) {
+                copied = false;
+            }
+            textarea.remove();
+            return copied;
+        }
+
         function renderIdle(email = "") {
             resultEmailEl.textContent = email || "-";
             resultCodeEl.textContent = email ? "等待验证码" : "等待";
@@ -359,9 +391,7 @@
         }
 
         async function copyCode(code) {
-            try {
-                if (code && navigator.clipboard) await navigator.clipboard.writeText(code);
-            } catch (_) {}
+            await copyText(code);
         }
 
         async function fetchLatestCode(manual) {
