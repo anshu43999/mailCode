@@ -1,8 +1,15 @@
 <?php
 declare(strict_types=1);
 
+if (ob_get_level() === 0) {
+    ob_start();
+}
+
 function api_send_json(array $payload, int $statusCode = 200): void
 {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     http_response_code($statusCode);
     header("Content-Type: application/json; charset=UTF-8");
     header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");

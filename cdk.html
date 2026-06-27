@@ -191,6 +191,16 @@
             statusEl.textContent = message;
         }
 
+        async function readJsonResponse(response) {
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (_) {
+                const detail = text.trim().slice(0, 160);
+                throw new Error(detail ? `接口返回异常：${detail}` : "接口返回异常，请检查服务器日志。");
+            }
+        }
+
         async function copyText(text) {
             const value = String(text || "");
             if (!value) return false;
@@ -245,7 +255,7 @@
                     headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
                     body: JSON.stringify({ action: "verify", cdk }),
                 });
-                const result = await response.json();
+                const result = await readJsonResponse(response);
                 if (!response.ok || !result.success) {
                     throw new Error(result.message || "CDK 验证失败。");
                 }

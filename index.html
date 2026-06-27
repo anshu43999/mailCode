@@ -394,6 +394,16 @@
             await copyText(code);
         }
 
+        async function readJsonResponse(response) {
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (_) {
+                const detail = text.trim().slice(0, 160);
+                throw new Error(detail ? `接口返回异常：${detail}` : "接口返回异常，请检查服务器日志。");
+            }
+        }
+
         async function fetchLatestCode(manual) {
             if (!currentEmail || !currentPassword || isFetching) return false;
             isFetching = true;
@@ -405,7 +415,7 @@
                     headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
                     body: JSON.stringify({ target_email: currentEmail, access_password: currentPassword }),
                 });
-                const result = await response.json();
+                const result = await readJsonResponse(response);
                 if (!response.ok || !result.success) throw new Error(result.message || "查询失败。");
                 renderResult(result.data || {});
                 if (result.data && result.data.found) {
