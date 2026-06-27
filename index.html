@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>验证码查询</title>
+    <style>
+        * { box-sizing: border-box; }
+        :root {
+            --bg: #eef2f0;
+            --bg-2: #e3ebe8;
+            --panel: rgba(255, 255, 250, 0.92);
+            --panel-strong: #fffdf7;
+            --line: rgba(25, 45, 40, 0.12);
+            --ink: #14211d;
+            --muted: #5d6a66;
+            --accent: #0c6b5b;
+            --accent-strong: #094e42;
+            --accent-soft: #e4f2ee;
+            --warn: #9a6410;
+            --danger: #b23333;
+            --shadow: 0 28px 70px rgba(20, 33, 29, 0.14);
+        }
+        html, body { min-height: 100%; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+            background:
+                linear-gradient(135deg, rgba(12, 107, 91, 0.12), transparent 34%),
+                linear-gradient(320deg, rgba(154, 100, 16, 0.09), transparent 30%),
+                radial-gradient(circle at top right, rgba(255, 255, 255, 0.72), transparent 34%),
+                linear-gradient(180deg, var(--bg), var(--bg-2));
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(20, 33, 29, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(20, 33, 29, 0.04) 1px, transparent 1px);
+            background-size: 48px 48px;
+            mask-image: linear-gradient(180deg, rgba(0,0,0,0.6), transparent 85%);
+            opacity: 0.35;
+        }
+        main {
+            width: min(1120px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 24px 0 36px;
+            display: grid;
+            gap: 16px;
+        }
+        .hero,
+        .panel {
+            position: relative;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+        }
+        .hero {
+            padding: 26px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.3fr) 280px;
+            gap: 18px;
+            align-items: end;
+        }
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 7px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(12, 107, 91, 0.18);
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0;
+        }
+        h1 {
+            margin: 12px 0 10px;
+            font-size: clamp(28px, 4.2vw, 48px);
+            line-height: 1.04;
+            letter-spacing: 0;
+        }
+        .lead {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.75;
+            font-size: 15px;
+            max-width: 62ch;
+        }
+        .hero-links {
+            margin-top: 14px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        a {
+            color: var(--accent-strong);
+            text-decoration: none;
+            font-weight: 800;
+        }
+        a:hover { text-decoration: underline; }
+        .hero-card {
+            justify-self: stretch;
+            padding: 18px;
+            border-radius: 8px;
+            background: linear-gradient(180deg, rgba(228, 242, 238, 0.9), rgba(255, 255, 255, 0.82));
+            border: 1px solid rgba(12, 107, 91, 0.12);
+            display: grid;
+            gap: 12px;
+        }
+        .stat { display: grid; gap: 4px; }
+        .stat-label { color: var(--muted); font-size: 12px; font-weight: 700; }
+        .stat-value { font-size: 18px; font-weight: 900; color: var(--ink); }
+        .stat-note { color: var(--muted); font-size: 13px; line-height: 1.6; }
+        .panel { padding: 22px; }
+        form {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) auto;
+            gap: 12px;
+            align-items: end;
+        }
+        label {
+            display: grid;
+            gap: 7px;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 800;
+        }
+        input {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.96);
+            color: var(--ink);
+            padding: 13px 14px;
+            font-size: 15px;
+            outline: none;
+        }
+        input::placeholder { color: #8a9691; }
+        input:focus {
+            border-color: rgba(12, 107, 91, 0.45);
+            box-shadow: 0 0 0 3px rgba(12, 107, 91, 0.12);
+        }
+        button {
+            border: 0;
+            border-radius: 8px;
+            background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+            color: #fff;
+            padding: 14px 18px;
+            font-size: 14px;
+            font-weight: 900;
+            cursor: pointer;
+            min-height: 46px;
+            white-space: nowrap;
+        }
+        button:hover { filter: brightness(1.02); }
+        button:disabled { opacity: .62; cursor: not-allowed; }
+        .status {
+            min-height: 22px;
+            margin-top: 14px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .status.success { color: var(--accent-strong); }
+        .status.error { color: var(--danger); }
+        .status.info { color: #245c78; }
+        .result { display: grid; gap: 14px; }
+        .meta {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 14px;
+            align-items: center;
+            padding-bottom: 2px;
+        }
+        .meta span { color: var(--muted); font-size: 13px; font-weight: 800; }
+        .email { color: var(--ink); word-break: break-all; text-align: right; font-weight: 900; }
+        .code {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            min-height: 126px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(180deg, rgba(255, 252, 245, 0.95), rgba(246, 241, 230, 0.92));
+            font-size: clamp(42px, 9vw, 76px);
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            user-select: all;
+        }
+        .code.empty {
+            color: var(--warn);
+            font-size: clamp(20px, 4vw, 28px);
+            letter-spacing: 0;
+        }
+        .toolbar { display: flex; gap: 12px; flex-wrap: wrap; }
+        .subtle { color: var(--muted); font-size: 13px; line-height: 1.7; }
+        @media (max-width: 900px) {
+            .hero { grid-template-columns: 1fr; }
+            form { grid-template-columns: 1fr; }
+            .meta { grid-template-columns: 1fr; }
+            .email { text-align: left; }
+        }
+        @media (max-width: 640px) {
+            main { width: min(100% - 20px, 1120px); padding-top: 16px; }
+            .hero, .panel { padding: 18px; }
+            .toolbar { display: grid; }
+            button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <section class="hero">
+            <div>
+                <div class="eyebrow">验证码查询 · 3 秒轮询</div>
+                <h1>验证码查询面板</h1>
+                <p class="lead">输入目标邮箱和查询密码后，系统会持续轮询后端邮箱。查到最新验证码时，会自动尝试复制到剪贴板，并给出提示。</p>
+                <div class="hero-links">
+                    <a href="./privacy.html">添加隐私邮箱</a>
+                    <a href="./admin.html">进入管理页</a>
+                </div>
+            </div>
+            <div class="hero-card">
+                <div class="stat">
+                    <div class="stat-label">当前状态</div>
+                    <div class="stat-value">自动轮询中</div>
+                    <div class="stat-note">页面在可见时会继续检查；切换后台后会暂停，回到页面自动恢复。</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <form id="queryForm" autocomplete="off">
+                <label>目标邮箱
+                    <input id="targetEmail" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="name@example.com" required />
+                </label>
+                <label>查询密码
+                    <input id="accessPassword" type="password" autocomplete="new-password" required />
+                </label>
+                <button id="submitBtn" type="submit">开始查询</button>
+            </form>
+            <div id="status" class="status">等待输入邮箱和查询密码。</div>
+        </section>
+
+        <section class="panel result" aria-live="polite">
+            <div class="meta">
+                <span>目标邮箱</span>
+                <strong id="resultEmail" class="email">-</strong>
+            </div>
+            <div id="resultCode" class="code empty">等待验证码</div>
+            <div class="meta">
+                <span>邮件时间</span>
+                <strong id="resultUpdatedAt">-</strong>
+            </div>
+            <div class="meta">
+                <span>最近检查</span>
+                <strong id="resultCheckedAt">-</strong>
+            </div>
+            <div class="subtle">查到验证码后，页面会自动停止轮询并尝试复制验证码。</div>
+        </section>
+    </main>
+    <script>
+        const apiUrl = "./api/code.php";
+        const pollIntervalMs = 3000;
+        const queryForm = document.getElementById("queryForm");
+        const targetEmailInput = document.getElementById("targetEmail");
+        const accessPasswordInput = document.getElementById("accessPassword");
+        const submitBtn = document.getElementById("submitBtn");
+        const statusEl = document.getElementById("status");
+        const resultEmailEl = document.getElementById("resultEmail");
+        const resultCodeEl = document.getElementById("resultCode");
+        const resultUpdatedAtEl = document.getElementById("resultUpdatedAt");
+        const resultCheckedAtEl = document.getElementById("resultCheckedAt");
+        let pollingTimer = null;
+        let currentEmail = "";
+        let currentPassword = "";
+        let isFetching = false;
+        let autoStopped = false;
+        let audioContext = null;
+
+        function setStatus(type, message) {
+            statusEl.className = "status" + (type ? " " + type : "");
+            statusEl.textContent = message;
+        }
+
+        function setButton(label, disabled) {
+            submitBtn.textContent = label;
+            submitBtn.disabled = disabled;
+        }
+
+        function renderIdle(email = "") {
+            resultEmailEl.textContent = email || "-";
+            resultCodeEl.textContent = email ? "等待验证码" : "等待";
+            resultCodeEl.className = "code empty";
+            resultUpdatedAtEl.textContent = "-";
+            resultCheckedAtEl.textContent = "-";
+        }
+
+        function renderResult(data) {
+            const code = String(data.verification_code || "");
+            resultEmailEl.textContent = data.target_email || currentEmail || "-";
+            resultUpdatedAtEl.textContent = data.updated_at || "-";
+            resultCheckedAtEl.textContent = data.checked_at || "-";
+            resultCodeEl.textContent = code || "等待验证码";
+            resultCodeEl.className = code ? "code" : "code empty";
+        }
+
+        function stopPolling() {
+            if (pollingTimer) {
+                clearInterval(pollingTimer);
+                pollingTimer = null;
+            }
+        }
+
+        function startPolling() {
+            stopPolling();
+            pollingTimer = setInterval(() => fetchLatestCode(false), pollIntervalMs);
+        }
+
+        async function ensureAudioReady() {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return false;
+            audioContext = audioContext || new AudioCtx();
+            if (audioContext.state === "suspended") {
+                try {
+                    await audioContext.resume();
+                } catch (_) {
+                    return false;
+                }
+            }
+            return audioContext.state === "running";
+        }
+
+        async function playSuccessTone() {
+            if (!(await ensureAudioReady())) return;
+            const now = audioContext.currentTime;
+            [880, 1174].forEach((frequency, index) => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                const startAt = now + index * 0.16;
+                const endAt = startAt + 0.11;
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(frequency, startAt);
+                gain.gain.setValueAtTime(0.0001, startAt);
+                gain.gain.exponentialRampToValueAtTime(0.16, startAt + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, endAt);
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                osc.start(startAt);
+                osc.stop(endAt);
+            });
+        }
+
+        async function copyCode(code) {
+            try {
+                if (code && navigator.clipboard) await navigator.clipboard.writeText(code);
+            } catch (_) {}
+        }
+
+        async function fetchLatestCode(manual) {
+            if (!currentEmail || !currentPassword || isFetching) return;
+            isFetching = true;
+            setButton("加载中...", true);
+            if (manual) setStatus("info", "正在检查邮箱...");
+            try {
+                const response = await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+                    body: JSON.stringify({ target_email: currentEmail, access_password: currentPassword }),
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || "查询失败。");
+                renderResult(result.data || {});
+                if (result.data && result.data.found) {
+                    autoStopped = true;
+                    stopPolling();
+                    await copyCode(result.data.verification_code || "");
+                    await playSuccessTone();
+                    setStatus("success", "已找到验证码，已尝试复制到剪贴板。");
+                } else {
+                    setStatus("info", result.message || "暂未查到验证码，继续轮询中...");
+                }
+            } catch (error) {
+                setStatus("error", error.message || "查询失败，下一次轮询会重试。");
+            } finally {
+                isFetching = false;
+                setButton(currentEmail ? "刷新查询" : "开始查询", false);
+            }
+        }
+
+        queryForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const email = targetEmailInput.value.trim();
+            const password = accessPasswordInput.value.trim();
+            if (!email || !password) {
+                setStatus("error", "请填写目标邮箱和查询密码。");
+                return;
+            }
+            autoStopped = false;
+            currentEmail = email;
+            currentPassword = password;
+            void ensureAudioReady();
+            renderIdle(currentEmail);
+            fetchLatestCode(true);
+            startPolling();
+        });
+
+        const initialEmail = new URLSearchParams(window.location.search).get("email");
+        if (initialEmail) {
+            targetEmailInput.value = initialEmail;
+            renderIdle(initialEmail);
+        }
+
+        document.addEventListener("visibilitychange", () => {
+            if (!currentEmail || autoStopped) return;
+            document.hidden ? stopPolling() : (fetchLatestCode(false), startPolling());
+        });
+
+        window.addEventListener("beforeunload", stopPolling);
+        renderIdle();
+    </script>
+</body>
+</html>

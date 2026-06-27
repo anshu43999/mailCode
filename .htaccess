@@ -1,0 +1,16 @@
+<IfModule mod_headers.c>
+    <FilesMatch "\.(html|php)$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(config|lib)/ - [F,L]
+</IfModule>
+
+<FilesMatch "^(mail|mail\.example|access_accounts)\.(php|json)$">
+    Require all denied
+</FilesMatch>

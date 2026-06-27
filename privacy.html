@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>添加隐私邮箱</title>
+    <style>
+        * { box-sizing: border-box; }
+        :root {
+            --bg: #eef2ef;
+            --bg-2: #e1eae6;
+            --panel: rgba(255, 253, 248, 0.94);
+            --line: rgba(24, 38, 33, 0.12);
+            --ink: #13211c;
+            --muted: #5d6964;
+            --accent: #0c6b5b;
+            --accent-strong: #094e42;
+            --soft: #edf5f1;
+            --danger: #b23333;
+            --gold: #9a6410;
+            --shadow: 0 28px 70px rgba(20, 33, 29, 0.13);
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 24px;
+            color: var(--ink);
+            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+            background:
+                linear-gradient(135deg, rgba(12, 107, 91, 0.11), transparent 33%),
+                linear-gradient(320deg, rgba(154, 100, 16, 0.08), transparent 30%),
+                linear-gradient(180deg, var(--bg), var(--bg-2));
+        }
+        main {
+            width: min(1080px, 100%);
+            margin: 0 auto;
+            display: grid;
+            gap: 16px;
+        }
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 22px;
+            backdrop-filter: blur(10px);
+        }
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+            gap: 18px;
+            align-items: end;
+        }
+        h1, h2 {
+            margin: 0 0 8px;
+            letter-spacing: 0;
+        }
+        h1 {
+            font-size: clamp(30px, 5vw, 54px);
+            line-height: 1.04;
+        }
+        h2 { font-size: 22px; }
+        p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.75;
+        }
+        a {
+            color: var(--accent-strong);
+            font-weight: 800;
+            text-decoration: none;
+        }
+        a:hover { text-decoration: underline; }
+        .steps {
+            display: grid;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+        .step {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .num {
+            width: 24px;
+            height: 24px;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            flex: none;
+            background: #e2f1ec;
+            color: var(--accent-strong);
+            font-weight: 900;
+            font-size: 12px;
+        }
+        form { display: grid; gap: 14px; }
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 14px;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        label {
+            display: grid;
+            gap: 7px;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 800;
+        }
+        input {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.96);
+            color: var(--ink);
+            padding: 13px 14px;
+            font-size: 15px;
+            outline: none;
+        }
+        input::placeholder { color: #8a9691; }
+        input:focus {
+            border-color: rgba(12, 107, 91, 0.45);
+            box-shadow: 0 0 0 3px rgba(12, 107, 91, 0.12);
+        }
+        button {
+            border: 0;
+            border-radius: 8px;
+            background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+            color: #fff;
+            padding: 13px 16px;
+            min-height: 44px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+        button:hover { filter: brightness(1.02); }
+        button:disabled { opacity: .62; cursor: not-allowed; }
+        button.secondary {
+            color: var(--accent-strong);
+            background: #e7f2ee;
+            border: 1px solid rgba(12, 107, 91, 0.18);
+        }
+        .status {
+            min-height: 22px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+        .status.success { color: var(--accent-strong); }
+        .status.error { color: var(--danger); }
+        .status.info { color: #245c78; }
+        .card {
+            background: var(--soft);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 16px;
+            display: grid;
+            gap: 10px;
+        }
+        .pill {
+            display: inline-flex;
+            width: max-content;
+            align-items: center;
+            border: 1px solid rgba(154, 100, 16, 0.24);
+            color: var(--gold);
+            background: #fff7e8;
+            padding: 7px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 900;
+        }
+        .saved { display: none; }
+        .saved.show { display: grid; }
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+            word-break: break-all;
+        }
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        @media (max-width: 860px) {
+            .hero,
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            .panel { padding: 18px; }
+            .actions { display: grid; }
+        }
+        @media (max-width: 640px) {
+            body { padding: 16px; }
+            button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <section class="panel hero">
+            <div>
+                <h1>添加隐私邮箱</h1>
+                <p>先在 iCloud 中手动创建“隐藏邮箱”别名，再把这个别名登记到系统里。登记后，系统就能用同一套邮箱读取逻辑去查询验证码。</p>
+            </div>
+            <div class="steps">
+                <div class="step"><span class="num">1</span><span>先在 iCloud 设置里创建隐藏邮箱别名。</span></div>
+                <div class="step"><span class="num">2</span><span>把别名和查询密码填到下面的表单。</span></div>
+                <div class="step"><span class="num">3</span><span>之后直接去查询页输入这个邮箱即可。</span></div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>隐私邮箱登记</h2>
+            <p>“标签”只用于你自己辨认这条配置，不会影响后台读取逻辑。</p>
+            <form id="privacyForm" autocomplete="off">
+                <div class="grid">
+                    <label>管理员密码
+                        <input id="adminPassword" type="password" autocomplete="new-password" required />
+                    </label>
+                    <label>隐私邮箱别名
+                        <input id="emailInput" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="random-alias@icloud.com" required />
+                    </label>
+                    <label>备注标签
+                        <input id="labelInput" type="text" autocomplete="off" placeholder="OpenAI 账号 A" />
+                    </label>
+                    <label>查询密码
+                        <input id="passwordInput" type="password" autocomplete="new-password" required />
+                    </label>
+                </div>
+                <div class="actions">
+                    <button id="saveBtn" type="submit">保存隐私邮箱</button>
+                    <button id="generateBtn" class="secondary" type="button">生成密码</button>
+                    <button id="toggleBtn" class="secondary" type="button">显示密码</button>
+                    <a href="./admin.html">管理列表</a>
+                    <a href="./index.html">返回查询页</a>
+                </div>
+                <div id="status" class="status">准备就绪。</div>
+            </form>
+        </section>
+
+        <section id="savedPanel" class="panel saved">
+            <span class="pill">已保存</span>
+            <div class="card">
+                <div><strong>邮箱</strong><div id="savedEmail" class="mono">-</div></div>
+                <div><strong>标签</strong><div id="savedLabel">-</div></div>
+                <div class="actions">
+                    <button id="useBtn" type="button">用这个邮箱打开查询页</button>
+                    <button id="resetBtn" class="secondary" type="button">继续添加</button>
+                </div>
+            </div>
+        </section>
+    </main>
+    <script>
+        const form = document.getElementById("privacyForm");
+        const adminPasswordInput = document.getElementById("adminPassword");
+        const emailInput = document.getElementById("emailInput");
+        const labelInput = document.getElementById("labelInput");
+        const passwordInput = document.getElementById("passwordInput");
+        const saveBtn = document.getElementById("saveBtn");
+        const generateBtn = document.getElementById("generateBtn");
+        const toggleBtn = document.getElementById("toggleBtn");
+        const statusEl = document.getElementById("status");
+        const savedPanel = document.getElementById("savedPanel");
+        const savedEmail = document.getElementById("savedEmail");
+        const savedLabel = document.getElementById("savedLabel");
+        const useBtn = document.getElementById("useBtn");
+        const resetBtn = document.getElementById("resetBtn");
+        let lastSavedEmail = "";
+
+        function setStatus(type, message) {
+            statusEl.className = "status" + (type ? " " + type : "");
+            statusEl.textContent = message;
+        }
+
+        function generatePassword() {
+            const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+            const bytes = new Uint8Array(18);
+            crypto.getRandomValues(bytes);
+            let value = "";
+            bytes.forEach((byte) => { value += alphabet[byte % alphabet.length]; });
+            return value;
+        }
+
+        generateBtn.addEventListener("click", () => {
+            passwordInput.value = generatePassword();
+            passwordInput.type = "text";
+            toggleBtn.textContent = "隐藏密码";
+            setStatus("info", "已生成查询密码，请在离开页面前妥善保存。");
+        });
+
+        toggleBtn.addEventListener("click", () => {
+            const visible = passwordInput.type === "text";
+            passwordInput.type = visible ? "password" : "text";
+            toggleBtn.textContent = visible ? "显示密码" : "隐藏密码";
+        });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const adminPassword = adminPasswordInput.value.trim();
+            const email = emailInput.value.trim().toLowerCase();
+            const password = passwordInput.value.trim();
+            const label = labelInput.value.trim();
+            if (!adminPassword || !email || !password) {
+                setStatus("error", "管理员密码、隐私邮箱和查询密码都不能为空。");
+                return;
+            }
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = "保存中...";
+            try {
+                const response = await fetch("./api/admin.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+                    body: JSON.stringify({ action: "save", admin_password: adminPassword, email, access_password: password }),
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || "保存失败。");
+                }
+                lastSavedEmail = email;
+                savedEmail.textContent = email;
+                savedLabel.textContent = label || "-";
+                savedPanel.classList.add("show");
+                emailInput.value = "";
+                labelInput.value = "";
+                passwordInput.value = "";
+                passwordInput.type = "password";
+                toggleBtn.textContent = "显示密码";
+                setStatus("success", "隐私邮箱已保存。");
+            } catch (error) {
+                setStatus("error", error.message || "保存失败。");
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "保存隐私邮箱";
+            }
+        });
+
+        useBtn.addEventListener("click", () => {
+            const url = new URL("./index.html", window.location.href);
+            if (lastSavedEmail) {
+                url.searchParams.set("email", lastSavedEmail);
+            }
+            window.location.href = url.toString();
+        });
+
+        resetBtn.addEventListener("click", () => {
+            savedPanel.classList.remove("show");
+            emailInput.focus();
+        });
+    </script>
+</body>
+</html>

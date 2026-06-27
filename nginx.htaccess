@@ -1,0 +1,9 @@
+# Add this to the matching Nginx server block when deploying:
+#
+# location ^~ /config/ { deny all; }
+# location ^~ /lib/ { deny all; }
+# location ~* \.(html|php)$ {
+#     add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+#     add_header Pragma "no-cache" always;
+#     add_header Expires "0" always;
+# }

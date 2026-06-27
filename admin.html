@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>邮箱管理</title>
+    <style>
+        * { box-sizing: border-box; }
+        :root {
+            --bg: #eef2ef;
+            --bg-2: #e1eae6;
+            --panel: rgba(255, 253, 248, 0.94);
+            --line: rgba(24, 38, 33, 0.12);
+            --ink: #13211c;
+            --muted: #5d6964;
+            --accent: #0c6b5b;
+            --accent-strong: #094e42;
+            --soft: #edf5f1;
+            --danger: #b23333;
+            --info: #245c78;
+            --shadow: 0 28px 70px rgba(20, 33, 29, 0.13);
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 24px;
+            color: var(--ink);
+            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+            background:
+                linear-gradient(135deg, rgba(12, 107, 91, 0.11), transparent 33%),
+                linear-gradient(320deg, rgba(154, 100, 16, 0.08), transparent 30%),
+                linear-gradient(180deg, var(--bg), var(--bg-2));
+        }
+        main {
+            width: min(1080px, 100%);
+            margin: 0 auto;
+            display: grid;
+            gap: 16px;
+        }
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 22px;
+            backdrop-filter: blur(10px);
+        }
+        .top {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: end;
+        }
+        h1, h2 {
+            margin: 0 0 8px;
+            letter-spacing: 0;
+        }
+        h1 { font-size: clamp(28px, 4vw, 42px); line-height: 1.06; }
+        h2 { font-size: 22px; }
+        p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.75;
+        }
+        code {
+            padding: 0 6px;
+            border-radius: 4px;
+            background: #edf4f0;
+            color: var(--accent-strong);
+        }
+        a {
+            color: var(--accent-strong);
+            text-decoration: none;
+            font-weight: 800;
+        }
+        a:hover { text-decoration: underline; }
+        form { display: grid; gap: 14px; }
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: end;
+        }
+        .login-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: end;
+        }
+        label {
+            display: grid;
+            gap: 7px;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 800;
+        }
+        input {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.96);
+            color: var(--ink);
+            padding: 13px 14px;
+            font-size: 15px;
+            outline: none;
+        }
+        input:focus {
+            border-color: rgba(12, 107, 91, 0.45);
+            box-shadow: 0 0 0 3px rgba(12, 107, 91, 0.12);
+        }
+        button {
+            border: 0;
+            border-radius: 8px;
+            background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+            color: #fff;
+            padding: 14px 18px;
+            min-height: 46px;
+            font-weight: 900;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        button:hover { filter: brightness(1.02); }
+        button:disabled { opacity: .62; cursor: not-allowed; }
+        button.secondary {
+            background: #e7f2ee;
+            color: var(--accent-strong);
+            border: 1px solid rgba(12, 107, 91, 0.18);
+        }
+        button.danger { background: var(--danger); }
+        .status {
+            min-height: 22px;
+            color: var(--muted);
+            font-size: 14px;
+            margin-top: 12px;
+            line-height: 1.6;
+        }
+        .status.success { color: var(--accent-strong); }
+        .status.error { color: var(--danger); }
+        .status.info { color: var(--info); }
+        .hide { display: none; }
+        .list {
+            display: grid;
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .item {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto auto;
+            gap: 10px;
+            align-items: center;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 14px;
+            background: linear-gradient(180deg, rgba(237, 245, 241, 0.96), rgba(247, 250, 248, 0.96));
+        }
+        .email {
+            word-break: break-all;
+            font-weight: 900;
+        }
+        .empty {
+            color: var(--muted);
+            padding: 12px 0;
+        }
+        .note {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.7;
+            margin-top: 12px;
+        }
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        @media (max-width: 860px) {
+            .top,
+            .login-grid,
+            .grid,
+            .item {
+                grid-template-columns: 1fr;
+                display: grid;
+            }
+        }
+        @media (max-width: 640px) {
+            body { padding: 16px; }
+            .panel { padding: 18px; }
+            .toolbar { display: grid; }
+            button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <section class="panel top">
+            <div>
+                <h1>邮箱管理台</h1>
+                <p>用于维护可查询验证码的邮箱账号，以及对应的查询密码。</p>
+            </div>
+            <div class="toolbar">
+                <a href="./privacy.html">添加隐私邮箱</a>
+                <a href="./index.html">返回查询页</a>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>管理员登录</h2>
+            <p>请输入 <code>config/mail.php</code> 中的管理员密码。</p>
+            <form id="loginForm" autocomplete="off">
+                <div class="login-grid">
+                    <label>管理员密码
+                        <input id="adminPassword" type="password" autocomplete="new-password" required />
+                    </label>
+                    <button id="loadBtn" type="submit">登录</button>
+                </div>
+            </form>
+            <div id="status" class="status">等待登录。</div>
+        </section>
+
+        <section id="managePanel" class="panel hide">
+            <h2>添加或更新账号</h2>
+            <p>保存会覆盖该邮箱现有的查询密码，系统会按原有方式存储密码哈希。</p>
+            <form id="accountForm" autocomplete="off">
+                <div class="grid">
+                    <label>邮箱
+                        <input id="emailInput" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="name@example.com" required />
+                    </label>
+                    <label>查询密码
+                        <input id="passwordInput" type="password" autocomplete="new-password" required />
+                    </label>
+                    <button id="saveBtn" type="submit">保存</button>
+                </div>
+            </form>
+            <div class="note">查询密码不会明文展示。需要替换时，重新输入新密码即可。</div>
+        </section>
+
+        <section id="listPanel" class="panel hide">
+            <h2>已配置账号</h2>
+            <div id="accountList" class="list"></div>
+        </section>
+    </main>
+    <script>
+        const loginForm = document.getElementById("loginForm");
+        const accountForm = document.getElementById("accountForm");
+        const adminPasswordInput = document.getElementById("adminPassword");
+        const emailInput = document.getElementById("emailInput");
+        const passwordInput = document.getElementById("passwordInput");
+        const loadBtn = document.getElementById("loadBtn");
+        const saveBtn = document.getElementById("saveBtn");
+        const statusEl = document.getElementById("status");
+        const managePanel = document.getElementById("managePanel");
+        const listPanel = document.getElementById("listPanel");
+        const accountList = document.getElementById("accountList");
+        let currentAdminPassword = "";
+
+        function setStatus(type, message) {
+            statusEl.className = "status" + (type ? " " + type : "");
+            statusEl.textContent = message;
+        }
+
+        function setPanelsVisible(visible) {
+            managePanel.classList.toggle("hide", !visible);
+            listPanel.classList.toggle("hide", !visible);
+            if (!visible) accountList.replaceChildren();
+        }
+
+        async function adminRequest(action, payload = {}) {
+            const response = await fetch("./api/admin.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+                body: JSON.stringify({ action, admin_password: currentAdminPassword, ...payload }),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.message || "操作失败。");
+            return result;
+        }
+
+        function renderAccounts(accounts) {
+            accountList.replaceChildren();
+            const items = Array.isArray(accounts) ? accounts : [];
+            if (!items.length) {
+                const empty = document.createElement("div");
+                empty.className = "empty";
+                empty.textContent = "当前没有配置任何账号。";
+                accountList.append(empty);
+                return;
+            }
+
+            items.forEach((item) => {
+                const email = String(item.email || "");
+                const row = document.createElement("div");
+                row.className = "item";
+
+                const emailEl = document.createElement("div");
+                emailEl.className = "email";
+                emailEl.textContent = email;
+
+                const editBtn = document.createElement("button");
+                editBtn.type = "button";
+                editBtn.className = "secondary";
+                editBtn.textContent = "编辑密码";
+                editBtn.addEventListener("click", () => {
+                    emailInput.value = email;
+                    passwordInput.value = "";
+                    passwordInput.focus();
+                    setStatus("info", "已载入该邮箱，请输入新的查询密码后保存。");
+                });
+
+                const deleteBtn = document.createElement("button");
+                deleteBtn.type = "button";
+                deleteBtn.className = "danger";
+                deleteBtn.textContent = "删除";
+                deleteBtn.addEventListener("click", () => deleteAccount(email));
+
+                row.append(emailEl, editBtn, deleteBtn);
+                accountList.append(row);
+            });
+        }
+
+        async function deleteAccount(email) {
+            if (!confirm(`确定删除 ${email} 吗？`)) return;
+            try {
+                const result = await adminRequest("delete", { email });
+                renderAccounts(result.data.accounts || []);
+                setStatus("success", "已删除。");
+            } catch (error) {
+                setStatus("error", error.message || "删除失败。");
+            }
+        }
+
+        loginForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const password = adminPasswordInput.value.trim();
+            if (!password) return setStatus("error", "请输入管理员密码。");
+
+            currentAdminPassword = password;
+            loadBtn.disabled = true;
+            loadBtn.textContent = "加载中...";
+            try {
+                const result = await adminRequest("list");
+                setPanelsVisible(true);
+                renderAccounts(result.data.accounts || []);
+                setStatus("success", "管理台已加载。");
+            } catch (error) {
+                currentAdminPassword = "";
+                setPanelsVisible(false);
+                setStatus("error", error.message || "登录失败。");
+            } finally {
+                loadBtn.disabled = false;
+                loadBtn.textContent = "登录";
+            }
+        });
+
+        accountForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+            if (!email || !password) return setStatus("error", "请填写邮箱和查询密码。");
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = "保存中...";
+            try {
+                const result = await adminRequest("save", { email, access_password: password });
+                renderAccounts(result.data.accounts || []);
+                emailInput.value = "";
+                passwordInput.value = "";
+                setStatus("success", "已保存。");
+            } catch (error) {
+                setStatus("error", error.message || "保存失败。");
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "保存";
+            }
+        });
+
+        setPanelsVisible(false);
+    </script>
+</body>
+</html>
