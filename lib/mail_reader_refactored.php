@@ -386,6 +386,139 @@ function mr_search_text($imap, int $messageNumber, ?object $overview, $header, s
     return implode("\n", array_filter($parts, static fn($value): bool => trim((string) $value) !== ""));
 }
 
+function mr_debug_messages(array $params, int $debugLimit = 50): array
+{
+    if (($params["provider"] ?? "imap") !== "imap") {
+        return ["success" => false, "message" => "调试功能当前仅支持 IMAP 邮箱。", "data" => null];
+    }
+
+    $validation = mr_validate_request($params);
+    if ($validation !== "") {
+        return ["success" => false, "message" => $validation, "data" => null];
+    }
+
+    @imap_errors();
+    @imap_alerts();
+    $imap = @imap_open(mr_mailbox_path($params["backend_mailbox"]), $params["backend_mailbox"]["email"], $params["backend_mailbox"]["auth_code"], 0);
+    if ($imap === false) {
+        $errors = imap_errors();
+        $lastError = is_array($errors) && $errors !== [] ? end($errors) : imap_last_error();
+        return ["success" => false, "message" => "连接后端邮箱失败：" . ($lastError ?: "请检查 config/mail.php。"), "data" => null];
+    }
+
+    $messageNumbers = @imap_search($imap, "ALL");
+    $messageNumbers = is_array($messageNumbers) ? $messageNumbers : [];
+    rsort($messageNumbers, SORT_NUMERIC);
+    $messageNumbers = array_slice($messageNumbers, 0, min(max(1, $debugLimit), (int) $params["scan_limit"]));
+
+    $now = time();
+    $targetEmail = (string) $params["target_email"];
+    $targetPrefix = explode("@", $targetEmail)[0] ?? "";
+    $items = [];
+    $summary = [
+        "scanned" => 0,
+        "openai_sender" => 0,
+        "within_age" => 0,
+        "target_matched" => 0,
+        "code_found" => 0,
+    ];
+
+    foreach ($messageNumbers as $messageNumber) {
+        $messageNumber = (int) $messageNumber;
+        $overviewList = @imap_fetch_overview($imap, (string) $messageNumber, 0);
+        $overview = is_array($overviewList) && isset($overviewList[0]) ? $overviewList[0] : null;
+        $header = @imap_headerinfo($imap, $messageNumber);
+        $body = mr_best_body($imap, $messageNumber);
+        $subject = mr_message_subject($overview, $header);
+        $from = mr_message_from($overview, $header);
+        $dateText = is_object($overview) && isset($overview->date) ? (string) $overview->date : "";
+        $timestamp = $dateText !== "" ? strtotime($dateText) : false;
+        $ageSeconds = $timestamp === false ? null : max(0, $now - $timestamp);
+        $withinAge = $timestamp !== false && $ageSeconds <= (int) $params["max_age_seconds"];
+        $searchText = mr_search_text($imap, $messageNumber, $overview, $header, $body);
+        $fullTargetMatched = mr_contains($searchText, $targetEmail);
+        $prefixMatched = $targetPrefix !== "" && mr_contains($searchText, $targetPrefix);
+        $targetMatched = $fullTargetMatched || $prefixMatched;
+        $codes = mr_extract_verification_codes($subject . "\n" . $body);
+        $isOpenaiSender = mr_is_openai_sender($from);
+
+        $summary["scanned"]++;
+        if ($isOpenaiSender) {
+            $summary["openai_sender"]++;
+        }
+        if ($withinAge) {
+            $summary["within_age"]++;
+        }
+        if ($targetMatched) {
+            $summary["target_matched"]++;
+        }
+        if ($codes !== []) {
+            $summary["code_found"]++;
+        }
+
+        $skipReason = "";
+        if (!$isOpenaiSender) {
+            $skipReason = "发件人未命中 OpenAI/ChatGPT";
+        } elseif (!$withinAge) {
+            $skipReason = "邮件时间超出查询范围";
+        } elseif (!$targetMatched) {
+            $skipReason = "邮件中未匹配目标邮箱或前缀";
+        } elseif ($codes === []) {
+            $skipReason = "未提取到 6 位验证码";
+        } else {
+            $skipReason = "可匹配";
+        }
+
+        $items[] = [
+            "id" => $messageNumber,
+            "subject" => $subject,
+            "from" => $from !== "" ? $from : "未知发件人",
+            "to" => mr_format_address_list(is_object($header) ? ($header->to ?? null) : null),
+            "cc" => mr_format_address_list(is_object($header) ? ($header->cc ?? null) : null),
+            "overview_to" => is_object($overview) && isset($overview->to) ? mr_decode_header((string) $overview->to) : "",
+            "date_header" => $dateText,
+            "date_parsed" => $timestamp === false ? "" : date("Y-m-d H:i:s O", $timestamp),
+            "age_seconds" => $ageSeconds,
+            "seen" => is_object($overview) ? !empty($overview->seen) : false,
+            "is_openai_sender" => $isOpenaiSender,
+            "within_age" => $withinAge,
+            "target_matched" => $targetMatched,
+            "full_target_matched" => $fullTargetMatched,
+            "prefix_matched" => $prefixMatched,
+            "codes" => $codes,
+            "best_code" => $codes[0] ?? "",
+            "body_readable" => trim($body) !== "",
+            "body_preview" => mr_truncate($body, 120),
+            "skip_reason" => $skipReason,
+        ];
+    }
+
+    @imap_close($imap);
+
+    return [
+        "success" => true,
+        "message" => "调试扫描完成。",
+        "data" => [
+            "server_time" => date("Y-m-d H:i:s O", $now),
+            "target_email" => $targetEmail,
+            "target_prefix" => $targetPrefix,
+            "mailbox" => [
+                "host" => $params["backend_mailbox"]["imap_host"],
+                "folder" => $params["backend_mailbox"]["mail_folder"],
+            ],
+            "lookup" => [
+                "scan_limit" => $params["scan_limit"],
+                "debug_limit" => count($messageNumbers),
+                "max_age_seconds" => $params["max_age_seconds"],
+                "unread_only" => $params["unread_only"],
+                "delete_after_read" => $params["delete_after_read"],
+            ],
+            "summary" => $summary,
+            "messages" => $items,
+        ],
+    ];
+}
+
 function mr_message_from(?object $overview, $header): string
 {
     if (is_object($header) && isset($header->from[0]) && is_object($header->from[0])) {

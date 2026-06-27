@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>邮箱调试</title>
+    <link rel="stylesheet" href="./assets/app.css" />
+    <style>
+        .debug-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: end;
+        }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .summary-item {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.62);
+            padding: 12px;
+        }
+        .summary-item strong {
+            display: block;
+            font-size: 22px;
+            color: var(--accent-strong);
+        }
+        .debug-list {
+            display: grid;
+            gap: 12px;
+        }
+        .debug-item {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.66);
+            padding: 14px;
+            display: grid;
+            gap: 10px;
+        }
+        .debug-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .debug-title {
+            font-weight: 900;
+            overflow-wrap: anywhere;
+        }
+        .badge {
+            display: inline-flex;
+            border-radius: 999px;
+            padding: 5px 8px;
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            font-size: 12px;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+        .badge.warn {
+            background: #fff2d7;
+            color: #8a560c;
+        }
+        .kv {
+            display: grid;
+            grid-template-columns: 120px minmax(0, 1fr);
+            gap: 6px 10px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .kv strong {
+            color: var(--ink);
+            overflow-wrap: anywhere;
+        }
+        .flags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .flag {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 5px 8px;
+            background: rgba(255, 255, 255, 0.7);
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+        }
+        .flag.ok {
+            color: var(--accent-strong);
+            border-color: rgba(10, 118, 102, 0.24);
+            background: var(--accent-soft);
+        }
+        @media (max-width: 900px) {
+            .debug-grid,
+            .summary,
+            .kv {
+                grid-template-columns: 1fr;
+            }
+            .debug-head {
+                display: grid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <section class="panel top">
+            <div>
+                <h1>邮箱调试</h1>
+                <p>管理员用于查看 IMAP 实际扫描到的邮件摘要，判断验证码查询卡在哪一步。</p>
+            </div>
+            <div class="toolbar">
+                <a href="./admin.html">邮箱管理</a>
+                <a href="./index.html">返回查询页</a>
+            </div>
+        </section>
+
+        <section class="panel">
+            <form id="debugForm" autocomplete="off">
+                <div class="debug-grid">
+                    <label>管理员密码
+                        <input id="adminPassword" type="password" autocomplete="new-password" required />
+                    </label>
+                    <label>目标邮箱
+                        <input id="targetEmail" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="coil-97tubular@icloud.com" required />
+                    </label>
+                    <button id="scanBtn" type="submit">开始调试</button>
+                </div>
+            </form>
+            <div id="status" class="status">等待输入管理员密码和目标邮箱。</div>
+        </section>
+
+        <section id="resultPanel" class="panel hide">
+            <h2>扫描汇总</h2>
+            <p id="metaText"></p>
+            <div id="summary" class="summary"></div>
+        </section>
+
+        <section id="listPanel" class="panel hide">
+            <h2>最近邮件摘要</h2>
+            <div id="debugList" class="debug-list"></div>
+        </section>
+    </main>
+
+    <script>
+        const debugForm = document.getElementById("debugForm");
+        const adminPasswordInput = document.getElementById("adminPassword");
+        const targetEmailInput = document.getElementById("targetEmail");
+        const scanBtn = document.getElementById("scanBtn");
+        const statusEl = document.getElementById("status");
+        const resultPanel = document.getElementById("resultPanel");
+        const listPanel = document.getElementById("listPanel");
+        const metaText = document.getElementById("metaText");
+        const summaryEl = document.getElementById("summary");
+        const debugList = document.getElementById("debugList");
+
+        function setStatus(type, message) {
+            statusEl.className = "status" + (type ? " " + type : "");
+            statusEl.textContent = message;
+        }
+
+        async function readJsonResponse(response) {
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (_) {
+                const detail = text.trim().slice(0, 160);
+                throw new Error(detail ? `接口返回异常：${detail}` : "接口返回异常，请检查服务器日志。");
+            }
+        }
+
+        function boolFlag(label, value) {
+            const span = document.createElement("span");
+            span.className = "flag" + (value ? " ok" : "");
+            span.textContent = `${label}：${value ? "是" : "否"}`;
+            return span;
+        }
+
+        function renderSummary(data) {
+            const summary = data.summary || {};
+            const items = [
+                ["扫描邮件", summary.scanned || 0],
+                ["OpenAI 发件人", summary.openai_sender || 0],
+                ["时间范围内", summary.within_age || 0],
+                ["匹配目标邮箱", summary.target_matched || 0],
+                ["提取到验证码", summary.code_found || 0],
+            ];
+            summaryEl.replaceChildren(...items.map(([label, value]) => {
+                const div = document.createElement("div");
+                div.className = "summary-item";
+                div.innerHTML = `<strong>${value}</strong><span>${label}</span>`;
+                return div;
+            }));
+            metaText.textContent = `服务器时间：${data.server_time || "-"}；目标邮箱：${data.target_email || "-"}；扫描文件夹：${data.mailbox?.folder || "-"}；查询窗口：${data.lookup?.max_age_seconds || "-"} 秒。`;
+        }
+
+        function renderMessages(messages) {
+            debugList.replaceChildren();
+            if (!Array.isArray(messages) || messages.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "empty";
+                empty.textContent = "没有扫描到邮件。";
+                debugList.append(empty);
+                return;
+            }
+
+            messages.forEach((item) => {
+                const row = document.createElement("div");
+                row.className = "debug-item";
+
+                const head = document.createElement("div");
+                head.className = "debug-head";
+                const title = document.createElement("div");
+                title.className = "debug-title";
+                title.textContent = item.subject || "（无主题）";
+                const badge = document.createElement("span");
+                badge.className = "badge" + (item.skip_reason === "可匹配" ? "" : " warn");
+                badge.textContent = item.skip_reason || "-";
+                head.append(title, badge);
+
+                const kv = document.createElement("div");
+                kv.className = "kv";
+                const rows = [
+                    ["发件人", item.from || "-"],
+                    ["收件人", item.to || item.overview_to || "-"],
+                    ["抄送", item.cc || "-"],
+                    ["邮件时间", item.date_parsed || item.date_header || "-"],
+                    ["距现在秒数", item.age_seconds === null ? "-" : String(item.age_seconds)],
+                    ["验证码", item.best_code || "-"],
+                    ["正文摘要", item.body_preview || "-"],
+                ];
+                rows.forEach(([key, value]) => {
+                    const k = document.createElement("span");
+                    k.textContent = key;
+                    const v = document.createElement("strong");
+                    v.textContent = value;
+                    kv.append(k, v);
+                });
+
+                const flags = document.createElement("div");
+                flags.className = "flags";
+                flags.append(
+                    boolFlag("OpenAI 发件人", item.is_openai_sender),
+                    boolFlag("时间范围内", item.within_age),
+                    boolFlag("匹配完整邮箱", item.full_target_matched),
+                    boolFlag("匹配邮箱前缀", item.prefix_matched),
+                    boolFlag("正文可读", item.body_readable),
+                    boolFlag("已读", item.seen),
+                );
+
+                row.append(head, kv, flags);
+                debugList.append(row);
+            });
+        }
+
+        debugForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const adminPassword = adminPasswordInput.value.trim();
+            const targetEmail = targetEmailInput.value.trim();
+            if (!adminPassword || !targetEmail) {
+                setStatus("error", "请填写管理员密码和目标邮箱。");
+                return;
+            }
+
+            scanBtn.disabled = true;
+            scanBtn.textContent = "扫描中...";
+            resultPanel.classList.add("hide");
+            listPanel.classList.add("hide");
+            setStatus("info", "正在扫描服务器邮箱...");
+            try {
+                const response = await fetch("./api/debug.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+                    body: JSON.stringify({ admin_password: adminPassword, target_email: targetEmail, debug_limit: 50 }),
+                });
+                const result = await readJsonResponse(response);
+                if (!response.ok || !result.success) throw new Error(result.message || "调试失败。");
+                renderSummary(result.data || {});
+                renderMessages(result.data?.messages || []);
+                resultPanel.classList.remove("hide");
+                listPanel.classList.remove("hide");
+                setStatus("success", "调试扫描完成。");
+            } catch (error) {
+                setStatus("error", error.message || "调试失败。");
+            } finally {
+                scanBtn.disabled = false;
+                scanBtn.textContent = "开始调试";
+            }
+        });
+    </script>
+</body>
+</html>
