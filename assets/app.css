@@ -415,13 +415,23 @@ button.danger {
 
 .item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto auto;
     gap: 10px;
     align-items: center;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.62);
     padding: 13px;
+}
+
+button.used-toggle {
+    min-width: 76px;
+}
+
+button.used-toggle.used {
+    border-color: rgba(157, 104, 22, 0.28);
+    background: #fff2d7;
+    color: #8a560c;
 }
 
 .empty {

@@ -12,7 +12,7 @@ $adminPassword = trim((string) ($request["admin_password"] ?? ""));
 
 security_require_admin_password($config, $adminPassword, "admin_accounts");
 
-if (!in_array($action, ["list", "save", "delete"], true)) {
+if (!in_array($action, ["list", "save", "delete", "set_used"], true)) {
     api_fail("不支持的操作。", 400);
 }
 
@@ -35,6 +35,7 @@ if ($action === "save") {
     $accounts[$email] = [
         "hash" => accounts_hash_password($password),
         "secret" => accounts_encrypt_password($password, $adminPassword, $email),
+        "used" => !empty($accounts[$email]["used"]),
     ];
     if (!accounts_save_file($accounts)) {
         api_fail("账号保存失败。", 500);
@@ -55,6 +56,23 @@ if ($action === "delete") {
     }
 
     api_ok(["accounts" => accounts_payload($accounts, $adminPassword)], "已删除。");
+}
+
+if ($action === "set_used") {
+    $email = api_normalize_email((string) ($request["email"] ?? ""));
+    if ($email === "") {
+        api_fail("请填写邮箱。", 400);
+    }
+    if (!isset($accounts[$email])) {
+        api_fail("账号不存在。", 404);
+    }
+
+    $accounts[$email]["used"] = (bool) ($request["used"] ?? false);
+    if (!accounts_save_file($accounts)) {
+        api_fail("账号状态保存失败。", 500);
+    }
+
+    api_ok(["accounts" => accounts_payload($accounts, $adminPassword)], "状态已更新。");
 }
 
 api_ok(["accounts" => accounts_payload($accounts, $adminPassword)], "已加载。");

@@ -415,6 +415,7 @@
             items.forEach((item) => {
                 const email = String(item.email || "");
                 const password = String(item.access_password || "");
+                const used = Boolean(item.used);
                 const row = document.createElement("div");
                 row.className = "item";
 
@@ -427,6 +428,21 @@
                 secretEl.className = "account-secret";
                 secretEl.textContent = password ? `密码：${password}` : "密码：已隐藏";
                 metaEl.append(emailEl, secretEl);
+
+                const usedBtn = document.createElement("button");
+                usedBtn.type = "button";
+                usedBtn.className = "secondary used-toggle" + (used ? " used" : "");
+                usedBtn.textContent = used ? "已使用" : "未使用";
+                usedBtn.title = used ? "点击标记为未使用" : "点击标记为已使用";
+                usedBtn.addEventListener("click", async () => {
+                    try {
+                        const result = await adminRequest("set_used", { email, used: !used });
+                        renderAccounts(result.data.accounts || []);
+                        setStatus("success", used ? "已标记为未使用。" : "已标记为已使用。");
+                    } catch (error) {
+                        setStatus("error", error.message || "状态更新失败。");
+                    }
+                });
 
                 const copyBtn = document.createElement("button");
                 copyBtn.type = "button";
@@ -458,7 +474,7 @@
                 deleteBtn.textContent = "删除";
                 deleteBtn.addEventListener("click", () => deleteAccount(email));
 
-                row.append(metaEl, copyBtn, editBtn, deleteBtn);
+                row.append(metaEl, usedBtn, copyBtn, editBtn, deleteBtn);
                 accountList.append(row);
             });
         }

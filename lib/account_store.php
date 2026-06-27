@@ -19,13 +19,16 @@ function accounts_normalize_map(array $accounts): array
         if (is_array($record)) {
             $hash = (string) ($record["hash"] ?? $record["password_hash"] ?? $record["password"] ?? "");
             $secret = array_key_exists("secret", $record) ? (string) $record["secret"] : "";
+            $used = (bool) ($record["used"] ?? false);
         } else {
             $hash = (string) $record;
             $secret = "";
+            $used = false;
         }
         $normalized[$normalizedEmail] = [
             "hash" => $hash,
             "secret" => $secret,
+            "used" => $used,
         ];
     }
     ksort($normalized);
@@ -156,7 +159,10 @@ function accounts_payload_with_admin_password(array $accounts, ?string $adminPas
     $normalized = accounts_normalize_map($accounts);
     $items = [];
     foreach ($normalized as $email => $record) {
-        $item = ["email" => $email];
+        $item = [
+            "email" => $email,
+            "used" => !empty($record["used"]),
+        ];
         if ($adminPassword !== null) {
             $secret = (string) ($record["secret"] ?? "");
             $item["access_password"] = $secret !== "" ? accounts_decrypt_password($secret, $adminPassword, $email) : "";
