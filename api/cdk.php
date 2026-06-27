@@ -13,11 +13,11 @@ if ($method === "OPTIONS") {
 }
 
 if ($method === "GET") {
-    api_ok(["service_mode" => "cdk_lookup"], "CDK service loaded.");
+    api_ok(["service_mode" => "cdk_lookup"], "CDK 服务已加载。");
 }
 
 if ($method !== "POST") {
-    api_fail("Only GET and POST are supported.", 405);
+    api_fail("仅支持 GET 和 POST 请求。", 405);
 }
 
 $request = api_request_data();
@@ -53,7 +53,7 @@ $adminPassword = trim((string) ($request["admin_password"] ?? ""));
 security_require_admin_password($config, $adminPassword, "admin_cdk");
 
 if ($action === "list") {
-    api_ok(["records" => cdk_admin_payload($records)], "Loaded.");
+    api_ok(["records" => cdk_admin_payload($records)], "已加载。");
 }
 
 if ($action === "save") {
@@ -80,24 +80,24 @@ if ($action === "save") {
     ];
 
     if (!cdk_save_file($records)) {
-        api_fail("Failed to save CDK.", 500);
+        api_fail("CDK 保存失败。", 500);
     }
 
-    api_ok(["records" => cdk_admin_payload($records)], "Saved.");
+    api_ok(["records" => cdk_admin_payload($records)], "已保存。");
 }
 
 if ($action === "delete") {
     $code = cdk_normalize_code((string) ($request["cdk"] ?? ""));
     if ($code === "") {
-        api_fail("CDK is required.", 400);
+        api_fail("请填写 CDK。", 400);
     }
 
     unset($records[$code]);
     if (!cdk_save_file($records)) {
-        api_fail("Failed to delete CDK.", 500);
+        api_fail("CDK 删除失败。", 500);
     }
 
-    api_ok(["records" => cdk_admin_payload($records)], "Deleted.");
+    api_ok(["records" => cdk_admin_payload($records)], "已删除。");
 }
 
-api_fail("Unsupported action.", 400);
+api_fail("不支持的操作。", 400);

@@ -137,17 +137,17 @@ function accounts_password_matches(array|string $storedValue, string $password):
 function accounts_require_access(array $config, string $targetEmail, string $password): void
 {
     if ($targetEmail === "") {
-        api_fail("Target email is required.", 400);
+        api_fail("请填写目标邮箱。", 400);
     }
     if (!filter_var($targetEmail, FILTER_VALIDATE_EMAIL)) {
-        api_fail("Target email is invalid.", 400);
+        api_fail("目标邮箱格式不正确。", 400);
     }
     $accounts = accounts_load_allowed($config);
     if (!isset($accounts[$targetEmail])) {
-        api_fail("This email is not allowed.", 403);
+        api_fail("该邮箱未配置，暂不能查询。", 403);
     }
     if (!accounts_password_matches($accounts[$targetEmail], $password)) {
-        api_fail("Query password is incorrect.", 403);
+        api_fail("查询密码不正确。", 403);
     }
 }
 

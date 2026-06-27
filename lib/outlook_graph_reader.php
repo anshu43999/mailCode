@@ -59,7 +59,7 @@ function ogr_http_json(string $method, string $url, array $headers = [], ?string
         $error = curl_error($curl);
         curl_close($curl);
         if ($responseText === false) {
-            return ["ok" => false, "status" => 0, "json" => null, "text" => "", "error" => $error ?: "HTTP request failed."];
+            return ["ok" => false, "status" => 0, "json" => null, "text" => "", "error" => $error ?: "HTTP 请求失败。"];
         }
     } else {
         $context = stream_context_create([
@@ -81,7 +81,7 @@ function ogr_http_json(string $method, string $url, array $headers = [], ?string
         }
         if ($responseText === false) {
             $lastError = error_get_last();
-            return ["ok" => false, "status" => $statusCode, "json" => null, "text" => "", "error" => (string) ($lastError["message"] ?? "HTTP request failed.")];
+            return ["ok" => false, "status" => $statusCode, "json" => null, "text" => "", "error" => (string) ($lastError["message"] ?? "HTTP 请求失败。")];
         }
     }
 
@@ -112,7 +112,7 @@ function ogr_access_token(array $graph): array
     $clientId = trim((string) ogr_value($graph, "client_id", ""));
     $refreshToken = trim((string) ogr_value($graph, "refresh_token", ""));
     if ($clientId === "" || $refreshToken === "") {
-        return [false, "", false, "Outlook Graph is not configured. Provide access_token, or client_id plus refresh_token."];
+        return [false, "", false, "Outlook Graph 未配置，请提供 access_token，或同时提供 client_id 和 refresh_token。"];
     }
 
     $form = [
@@ -133,8 +133,8 @@ function ogr_access_token(array $graph): array
     $json = is_array($response["json"] ?? null) ? $response["json"] : [];
     $accessToken = trim((string) ($json["access_token"] ?? ""));
     if (!$response["ok"] || $accessToken === "") {
-        $description = (string) ($json["error_description"] ?? ($json["error"] ?? ($response["error"] ?? "Failed to refresh access token.")));
-        return [false, "", false, "Failed to refresh Outlook Graph token: " . $description];
+        $description = (string) ($json["error_description"] ?? ($json["error"] ?? ($response["error"] ?? "刷新访问令牌失败。")));
+        return [false, "", false, "刷新 Outlook Graph 令牌失败：" . $description];
     }
 
     return [true, $accessToken, true, ""];
@@ -210,7 +210,7 @@ function ogr_delete_message(array $graph, string $accessToken, string $messageId
     if (!($response["status"] === 204 || $response["ok"])) {
         $json = is_array($response["json"] ?? null) ? $response["json"] : [];
         $error = is_array($json["error"] ?? null) ? (string) ($json["error"]["message"] ?? "") : "";
-        return [false, $error !== "" ? $error : (string) ($response["error"] ?? "Failed to delete message.")];
+        return [false, $error !== "" ? $error : (string) ($response["error"] ?? "邮件删除失败。")];
     }
     return [true, ""];
 }
@@ -218,7 +218,7 @@ function ogr_delete_message(array $graph, string $accessToken, string $messageId
 function ogr_read_messages(array $params): array
 {
     if (!filter_var($params["target_email"], FILTER_VALIDATE_EMAIL)) {
-        return ["success" => false, "message" => "Target email is invalid.", "data" => null];
+        return ["success" => false, "message" => "目标邮箱格式不正确。", "data" => null];
     }
 
     $graph = is_array($params["outlook_graph"] ?? null) ? $params["outlook_graph"] : [];
@@ -234,7 +234,7 @@ function ogr_read_messages(array $params): array
     if (!$response["ok"]) {
         $json = is_array($response["json"] ?? null) ? $response["json"] : [];
         $error = is_array($json["error"] ?? null) ? (string) ($json["error"]["message"] ?? "") : "";
-        return ["success" => false, "message" => "Failed to read Outlook messages: " . ($error !== "" ? $error : (string) $response["error"]), "data" => null];
+        return ["success" => false, "message" => "读取 Outlook 邮件失败：" . ($error !== "" ? $error : (string) $response["error"]), "data" => null];
     }
 
     $json = is_array($response["json"] ?? null) ? $response["json"] : [];
@@ -262,7 +262,7 @@ function ogr_read_messages(array $params): array
         }
 
         $subject = trim((string) ($item["subject"] ?? ""));
-        $subject = $subject !== "" ? $subject : "(no subject)";
+        $subject = $subject !== "" ? $subject : "（无主题）";
         $body = ogr_message_body($item);
         $searchText = implode("\n", array_filter([
             $subject,
@@ -277,11 +277,11 @@ function ogr_read_messages(array $params): array
         $message = [
             "id" => (string) ($item["id"] ?? ""),
             "subject" => $subject,
-            "from" => $from !== "" ? $from : "unknown sender",
+            "from" => $from !== "" ? $from : "未知发件人",
             "date" => date("Y-m-d H:i:s", $timestamp),
             "seen" => $isSeen,
-            "preview" => mr_truncate($body !== "" ? $body : (string) ($item["bodyPreview"] ?? "No readable body.")),
-            "body" => $body !== "" ? $body : "No readable body.",
+            "preview" => mr_truncate($body !== "" ? $body : (string) ($item["bodyPreview"] ?? "邮件正文不可读取。")),
+            "body" => $body !== "" ? $body : "邮件正文不可读取。",
             "verification_codes" => $codes,
             "best_verification_code" => $bestCode,
         ];
@@ -330,13 +330,13 @@ function ogr_read_messages(array $params): array
     }
 
     if ($messages === []) {
-        $messageText = "No matching OpenAI verification email was found in the configured Outlook time window.";
+        $messageText = "在配置的 Outlook 时间范围内没有找到匹配的 OpenAI 验证邮件。";
     } elseif ($latestCode === "") {
-        $messageText = $readFallbackUsed ? "Unread Outlook emails did not match. Read emails were checked, but no code was extracted." : "A related Outlook email was found, but no code was extracted.";
+        $messageText = $readFallbackUsed ? "未读 Outlook 邮件未命中，已检查已读邮件，但没有提取到验证码。" : "已找到相关 Outlook 邮件，但没有提取到验证码。";
     } elseif ($fallbackUsed) {
-        $messageText = $deletedAfterRead ? "Code extracted from the only fallback Outlook email, and the email was deleted." : "Code extracted from the only fallback Outlook email.";
+        $messageText = $deletedAfterRead ? "已从唯一的候选 Outlook 邮件中提取验证码，并已删除该邮件。" : "已从唯一的候选 Outlook 邮件中提取验证码。";
     } else {
-        $messageText = $deletedAfterRead ? "OpenAI verification code extracted from Outlook, and the email was deleted." : "OpenAI verification code extracted from Outlook.";
+        $messageText = $deletedAfterRead ? "已从 Outlook 提取 OpenAI 验证码，并已删除该邮件。" : "已从 Outlook 提取 OpenAI 验证码。";
     }
 
     return [

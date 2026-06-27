@@ -343,13 +343,13 @@ function mr_public_config(array $config): array
 function mr_validate_request(array $params): string
 {
     if (!function_exists("imap_open")) {
-        return "PHP IMAP extension is not enabled. Enable extension=imap first.";
+        return "PHP IMAP 扩展未启用，请先启用 extension=imap。";
     }
     if (!mr_backend_mailbox_configured($params["backend_mailbox"])) {
-        return "Backend mailbox is not configured. Fill config/mail.php first.";
+        return "后端邮箱未配置，请先填写 config/mail.php。";
     }
     if (!filter_var($params["target_email"], FILTER_VALIDATE_EMAIL)) {
-        return "Target email is invalid.";
+        return "目标邮箱格式不正确。";
     }
     return "";
 }
@@ -417,10 +417,10 @@ function mr_message_subject(?object $overview, $header): string
 function mr_delete_message($imap, int $messageId): array
 {
     if (@imap_delete($imap, (string) $messageId) === false) {
-        return [false, imap_last_error() ?: "Failed to delete verification email."];
+        return [false, imap_last_error() ?: "验证码邮件删除失败。"];
     }
     if (@imap_expunge($imap) === false) {
-        return [false, imap_last_error() ?: "Failed to delete verification email."];
+        return [false, imap_last_error() ?: "验证码邮件删除失败。"];
     }
     return [true, ""];
 }
@@ -441,7 +441,7 @@ function mr_read_messages(array $params): array
     if ($imap === false) {
         $errors = imap_errors();
         $lastError = is_array($errors) && $errors !== [] ? end($errors) : imap_last_error();
-        return ["success" => false, "message" => "Failed to connect backend mailbox: " . ($lastError ?: "check config/mail.php"), "data" => null];
+        return ["success" => false, "message" => "连接后端邮箱失败：" . ($lastError ?: "请检查 config/mail.php。"), "data" => null];
     }
 
     $messageNumbers = @imap_search($imap, "ALL");
@@ -479,11 +479,11 @@ function mr_read_messages(array $params): array
         $message = [
             "id" => $messageNumber,
             "subject" => $subject,
-            "from" => $from !== "" ? $from : "unknown sender",
+            "from" => $from !== "" ? $from : "未知发件人",
             "date" => date("Y-m-d H:i:s", $timestamp),
             "seen" => $isSeen,
-            "preview" => mr_truncate($body !== "" ? $body : "No readable body."),
-            "body" => $body !== "" ? $body : "No readable body.",
+            "preview" => mr_truncate($body !== "" ? $body : "邮件正文不可读取。"),
+            "body" => $body !== "" ? $body : "邮件正文不可读取。",
             "verification_codes" => $codes,
             "best_verification_code" => $bestCode,
         ];
@@ -532,13 +532,13 @@ function mr_read_messages(array $params): array
     @imap_close($imap);
 
     if ($messages === []) {
-        $messageText = "No matching OpenAI verification email was found in the configured time window.";
+        $messageText = "在配置的时间范围内没有找到匹配的 OpenAI 验证邮件。";
     } elseif ($latestCode === "") {
-        $messageText = $readFallbackUsed ? "Unread emails did not match. Read emails were checked, but no code was extracted." : "A related OpenAI email was found, but no code was extracted.";
+        $messageText = $readFallbackUsed ? "未读邮件未命中，已检查已读邮件，但没有提取到验证码。" : "已找到相关 OpenAI 邮件，但没有提取到验证码。";
     } elseif ($fallbackUsed) {
-        $messageText = $deletedAfterRead ? "Code extracted from the only fallback OpenAI email, and the email was deleted." : "Code extracted from the only fallback OpenAI email.";
+        $messageText = $deletedAfterRead ? "已从唯一的候选 OpenAI 邮件中提取验证码，并已删除该邮件。" : "已从唯一的候选 OpenAI 邮件中提取验证码。";
     } else {
-        $messageText = $deletedAfterRead ? "OpenAI verification code extracted, and the email was deleted." : "OpenAI verification code extracted.";
+        $messageText = $deletedAfterRead ? "OpenAI 验证码提取成功，邮件已删除。" : "OpenAI 验证码提取成功。";
     }
 
     return [

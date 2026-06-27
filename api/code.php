@@ -15,11 +15,11 @@ if ($method === "OPTIONS") {
 if ($method === "GET") {
     $publicConfig = mr_public_config($config);
     $publicConfig["service_mode"] = "verification_code_only";
-    api_ok($publicConfig, "Verification service info loaded.");
+    api_ok($publicConfig, "验证码服务信息已加载。");
 }
 
 if ($method !== "POST") {
-    api_fail("Only GET and POST are supported.", 405);
+    api_fail("仅支持 GET 和 POST 请求。", 405);
 }
 
 $request = api_request_data();
@@ -49,4 +49,4 @@ api_ok([
     "deleted_message_id" => $data["deleted_message_id"] ?? null,
     "delete_error" => (string) ($data["delete_error"] ?? ""),
     "matched_mail_count" => (int) ($data["count"] ?? 0),
-], (string) ($result["message"] ?? "Lookup complete."));
+], (string) ($result["message"] ?? "查询完成。"));

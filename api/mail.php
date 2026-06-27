@@ -13,11 +13,11 @@ if ($method === "OPTIONS") {
 }
 
 if ($method === "GET") {
-    api_ok(mr_public_config($config), "Service info loaded.");
+    api_ok(mr_public_config($config), "服务信息已加载。");
 }
 
 if ($method !== "POST") {
-    api_fail("Only GET and POST are supported.", 405);
+    api_fail("仅支持 GET 和 POST 请求。", 405);
 }
 
 $request = api_request_data();
