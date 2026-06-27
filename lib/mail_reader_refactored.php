@@ -406,8 +406,20 @@ function mr_debug_messages(array $params, int $debugLimit = 50): array
         return ["success" => false, "message" => "连接后端邮箱失败：" . ($lastError ?: "请检查 config/mail.php。"), "data" => null];
     }
 
-    $messageNumbers = @imap_search($imap, "ALL");
-    $messageNumbers = is_array($messageNumbers) ? $messageNumbers : [];
+    $searchResult = @imap_search($imap, "ALL");
+    $searchErrors = [];
+    $searchAlerts = [];
+    if ($searchResult === false) {
+        $errors = imap_errors();
+        $alerts = imap_alerts();
+        $lastError = imap_last_error();
+        $searchErrors = is_array($errors) ? array_values(array_map("strval", $errors)) : [];
+        $searchAlerts = is_array($alerts) ? array_values(array_map("strval", $alerts)) : [];
+        if ($lastError !== false && $lastError !== "" && !in_array((string) $lastError, $searchErrors, true)) {
+            $searchErrors[] = (string) $lastError;
+        }
+    }
+    $messageNumbers = is_array($searchResult) ? $searchResult : [];
     rsort($messageNumbers, SORT_NUMERIC);
     $messageNumbers = array_slice($messageNumbers, 0, min(max(1, $debugLimit), (int) $params["scan_limit"]));
 
@@ -513,6 +525,11 @@ function mr_debug_messages(array $params, int $debugLimit = 50): array
                 "unread_only" => $params["unread_only"],
                 "delete_after_read" => $params["delete_after_read"],
             ],
+            "imap" => [
+                "search_error" => $searchErrors !== [],
+                "errors" => $searchErrors,
+                "alerts" => $searchAlerts,
+            ],
             "summary" => $summary,
             "messages" => $items,
         ],
@@ -577,8 +594,14 @@ function mr_read_messages(array $params): array
         return ["success" => false, "message" => "连接后端邮箱失败：" . ($lastError ?: "请检查 config/mail.php。"), "data" => null];
     }
 
-    $messageNumbers = @imap_search($imap, "ALL");
-    $messageNumbers = is_array($messageNumbers) ? $messageNumbers : [];
+    $searchResult = @imap_search($imap, "ALL");
+    if ($searchResult === false) {
+        $errors = imap_errors();
+        $lastError = is_array($errors) && $errors !== [] ? end($errors) : imap_last_error();
+        @imap_close($imap);
+        return ["success" => false, "message" => "读取收件箱失败：" . ($lastError ?: "IMAP 未返回邮件列表。"), "data" => null];
+    }
+    $messageNumbers = is_array($searchResult) ? $searchResult : [];
     rsort($messageNumbers, SORT_NUMERIC);
     $messageNumbers = array_slice($messageNumbers, 0, (int) $params["scan_limit"]);
     $unreadMatches = [];
