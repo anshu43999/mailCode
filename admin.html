@@ -298,6 +298,34 @@
             try {
                 return JSON.parse(text);
             } catch (_) {
+                const decoder = new TextDecoder();
+                const encoded = new TextEncoder().encode(text);
+                let depth = 0;
+                let inString = false;
+                let escaped = false;
+                for (let i = 0; i < encoded.length; i++) {
+                    const char = decoder.decode(encoded.slice(i, i + 1));
+                    if (escaped) {
+                        escaped = false;
+                        continue;
+                    }
+                    if (char === "\\") {
+                        escaped = inString;
+                        continue;
+                    }
+                    if (char === "\"") {
+                        inString = !inString;
+                        continue;
+                    }
+                    if (inString) continue;
+                    if (char === "{") depth++;
+                    if (char === "}") depth--;
+                    if (depth === 0 && i > 0) {
+                        try {
+                            return JSON.parse(decoder.decode(encoded.slice(0, i + 1)));
+                        } catch (_) {}
+                    }
+                }
                 const detail = text.trim().slice(0, 160);
                 throw new Error(detail ? `接口返回异常：${detail}` : "接口返回异常，请检查服务器日志。");
             }
