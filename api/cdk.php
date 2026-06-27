@@ -77,12 +77,14 @@ if ($action === "save") {
         api_fail("CDK 信息不能为空。", 400);
     }
 
+    $existingRecord = isset($records[$code]) ? cdk_normalize_record($records[$code]) : [];
     $records[$code] = [
         "title" => $title !== "" ? $title : "CDK 信息",
         "content" => $content,
         "enabled" => $enabled,
+        "sold" => (bool) ($request["sold"] ?? ($existingRecord["sold"] ?? false)),
         "updated_at" => date("Y-m-d H:i:s"),
-        "first_claimed_at" => (string) ($records[$code]["first_claimed_at"] ?? ""),
+        "first_claimed_at" => (string) ($existingRecord["first_claimed_at"] ?? ""),
     ];
 
     if (!cdk_save_file($records)) {
@@ -90,6 +92,24 @@ if ($action === "save") {
     }
 
     api_ok(["records" => cdk_admin_payload($records)], "已保存。");
+}
+
+if ($action === "set_sold") {
+    $code = cdk_normalize_code((string) ($request["cdk"] ?? ""));
+    if ($code === "" || !isset($records[$code])) {
+        api_fail("CDK 不存在或已失效。", 404);
+    }
+
+    $record = cdk_normalize_record($records[$code]);
+    $record["sold"] = (bool) ($request["sold"] ?? false);
+    $record["updated_at"] = date("Y-m-d H:i:s");
+    $records[$code] = $record;
+
+    if (!cdk_save_file($records)) {
+        api_fail("售出状态保存失败。", 500);
+    }
+
+    api_ok(["records" => cdk_admin_payload($records)], "售出状态已更新。");
 }
 
 if ($action === "delete") {

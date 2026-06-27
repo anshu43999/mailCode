@@ -41,6 +41,7 @@ function cdk_normalize_record(array|string $record): array
             "title" => "CDK 信息",
             "content" => $record,
             "enabled" => true,
+            "sold" => false,
             "updated_at" => "",
             "first_claimed_at" => "",
         ];
@@ -50,6 +51,7 @@ function cdk_normalize_record(array|string $record): array
         "title" => trim((string) ($record["title"] ?? "CDK 信息")),
         "content" => trim((string) ($record["content"] ?? "")),
         "enabled" => (bool) ($record["enabled"] ?? true),
+        "sold" => (bool) ($record["sold"] ?? false),
         "updated_at" => trim((string) ($record["updated_at"] ?? "")),
         "first_claimed_at" => trim((string) ($record["first_claimed_at"] ?? "")),
     ];
@@ -117,6 +119,7 @@ function cdk_admin_payload(array $records): array
             "title" => (string) ($record["title"] ?? "CDK 信息"),
             "content" => (string) ($record["content"] ?? ""),
             "enabled" => (bool) ($record["enabled"] ?? true),
+            "sold" => (bool) ($record["sold"] ?? false),
             "updated_at" => (string) ($record["updated_at"] ?? ""),
             "first_claimed_at" => (string) ($record["first_claimed_at"] ?? ""),
         ];

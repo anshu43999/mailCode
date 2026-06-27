@@ -3,6 +3,8 @@
     "title": "示例信息",
     "content": "这里填写用户验证 CDK 后可以看到的信息。",
     "enabled": true,
-    "updated_at": "2026-06-27 00:00:00"
+    "sold": false,
+    "updated_at": "2026-06-27 00:00:00",
+    "first_claimed_at": ""
   }
 }
