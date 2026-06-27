@@ -4,6 +4,9 @@ services:
     image: youjian-code-lookup:latest
     container_name: youjian-code-lookup
     restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      APP_TIMEZONE: Asia/Shanghai
     ports:
       - "8090:80"
     volumes:

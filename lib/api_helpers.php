@@ -6,6 +6,11 @@ ini_set("display_startup_errors", "0");
 ini_set("html_errors", "0");
 ini_set("log_errors", "1");
 
+$timezone = getenv("APP_TIMEZONE") ?: "Asia/Shanghai";
+if (in_array($timezone, timezone_identifiers_list(), true)) {
+    date_default_timezone_set($timezone);
+}
+
 if (ob_get_level() === 0) {
     ob_start();
 }
