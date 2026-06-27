@@ -395,7 +395,7 @@
         }
 
         async function fetchLatestCode(manual) {
-            if (!currentEmail || !currentPassword || isFetching) return;
+            if (!currentEmail || !currentPassword || isFetching) return false;
             isFetching = true;
             setButton("加载中...", true);
             if (manual) setStatus("info", "正在检查邮箱...");
@@ -417,15 +417,24 @@
                 } else {
                     setStatus("info", result.message || "暂未查到验证码，继续轮询中...");
                 }
+                return true;
             } catch (error) {
-                setStatus("error", error.message || "查询失败，下一次轮询会重试。");
+                setStatus("error", error.message || (manual ? "查询失败，请检查邮箱和查询密码。" : "查询失败，下一次轮询会重试。"));
+                if (manual) {
+                    stopPolling();
+                    currentEmail = "";
+                    currentPassword = "";
+                    autoStopped = false;
+                    renderIdle();
+                }
+                return false;
             } finally {
                 isFetching = false;
                 setButton(currentEmail ? "刷新查询" : "开始查询", false);
             }
         }
 
-        queryForm.addEventListener("submit", (event) => {
+        queryForm.addEventListener("submit", async (event) => {
             event.preventDefault();
             const email = targetEmailInput.value.trim();
             const password = accessPasswordInput.value.trim();
@@ -438,8 +447,10 @@
             currentPassword = password;
             void ensureAudioReady();
             renderIdle(currentEmail);
-            fetchLatestCode(true);
-            startPolling();
+            const started = await fetchLatestCode(true);
+            if (started && !autoStopped) {
+                startPolling();
+            }
         });
 
         const initialEmail = new URLSearchParams(window.location.search).get("email");
