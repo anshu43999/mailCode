@@ -14,6 +14,8 @@ OpenAI verification code lookup tool for forwarded mailbox workflows, including 
 ## Pages
 
 - `index.html` - lookup verification codes.
+- `cdk.html` - verify a CDK and show the linked information.
+- `cdk-admin.html` - manage CDK records.
 - `privacy.html` - add an iCloud private email alias.
 - `admin.html` - manage allowed emails.
 
@@ -38,6 +40,7 @@ Copy the example config before non-Docker deployment:
 ```bash
 cp config/mail.example.php config/mail.php
 cp config/access_accounts.example.json config/access_accounts.json
+cp config/cdk_records.example.json config/cdk_records.json
 ```
 
 For iCloud Mail, use an app-specific password and IMAP settings:
@@ -54,3 +57,9 @@ For iCloud Mail, use an app-specific password and IMAP settings:
 ```
 
 Do not commit `config/mail.php` or `config/access_accounts.json`; they are intentionally ignored.
+
+## Security
+
+- Change `admin_panel.password` in `config/mail.php` before deployment. The default example password is rejected.
+- CDK verification and admin APIs include IP-based failure throttling.
+- `config/*.json` runtime data files are blocked from web access and ignored by Git.

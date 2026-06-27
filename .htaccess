@@ -3,6 +3,9 @@
         Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
         Header set Pragma "no-cache"
         Header set Expires "0"
+        Header set X-Frame-Options "DENY"
+        Header set X-Content-Type-Options "nosniff"
+        Header set Referrer-Policy "no-referrer"
     </FilesMatch>
 </IfModule>
 
@@ -11,6 +14,6 @@
     RewriteRule ^(config|lib)/ - [F,L]
 </IfModule>
 
-<FilesMatch "^(mail|mail\.example|access_accounts)\.(php|json)$">
+<FilesMatch "^(mail|mail\.example|access_accounts|cdk_records|security_events)\.(php|json)$">
     Require all denied
 </FilesMatch>

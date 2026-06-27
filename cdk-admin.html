@@ -3,21 +3,18 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>邮箱管理</title>
+    <title>CDK 管理</title>
     <style>
         * { box-sizing: border-box; }
         :root {
             --bg: #eef2ef;
-            --bg-2: #e1eae6;
             --panel: rgba(255, 253, 248, 0.94);
             --line: rgba(24, 38, 33, 0.12);
             --ink: #13211c;
             --muted: #5d6964;
             --accent: #0c6b5b;
             --accent-strong: #094e42;
-            --soft: #edf5f1;
             --danger: #b23333;
-            --info: #245c78;
             --shadow: 0 28px 70px rgba(20, 33, 29, 0.13);
         }
         body {
@@ -29,7 +26,7 @@
             background:
                 linear-gradient(135deg, rgba(12, 107, 91, 0.11), transparent 33%),
                 linear-gradient(320deg, rgba(154, 100, 16, 0.08), transparent 30%),
-                linear-gradient(180deg, var(--bg), var(--bg-2));
+                var(--bg);
         }
         main {
             width: min(1080px, 100%);
@@ -62,12 +59,6 @@
             color: var(--muted);
             line-height: 1.75;
         }
-        code {
-            padding: 0 6px;
-            border-radius: 4px;
-            background: #edf4f0;
-            color: var(--accent-strong);
-        }
         a {
             color: var(--accent-strong);
             text-decoration: none;
@@ -75,17 +66,16 @@
         }
         a:hover { text-decoration: underline; }
         form { display: grid; gap: 14px; }
-        .grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
-            gap: 12px;
-            align-items: end;
-        }
         .login-grid {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
             gap: 12px;
             align-items: end;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 12px;
         }
         label {
             display: grid;
@@ -94,7 +84,7 @@
             font-size: 13px;
             font-weight: 800;
         }
-        input {
+        input, textarea {
             width: 100%;
             border: 1px solid var(--line);
             border-radius: 8px;
@@ -104,10 +94,24 @@
             font-size: 15px;
             outline: none;
         }
-        input:focus {
+        textarea {
+            min-height: 128px;
+            resize: vertical;
+            line-height: 1.65;
+        }
+        input:focus, textarea:focus {
             border-color: rgba(12, 107, 91, 0.45);
             box-shadow: 0 0 0 3px rgba(12, 107, 91, 0.12);
         }
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 800;
+        }
+        .check-row input { width: auto; }
         button {
             border: 0;
             border-radius: 8px;
@@ -119,14 +123,19 @@
             cursor: pointer;
             white-space: nowrap;
         }
-        button:hover { filter: brightness(1.02); }
-        button:disabled { opacity: .62; cursor: not-allowed; }
         button.secondary {
             background: #e7f2ee;
             color: var(--accent-strong);
             border: 1px solid rgba(12, 107, 91, 0.18);
         }
         button.danger { background: var(--danger); }
+        button:disabled { opacity: .62; cursor: not-allowed; }
+        .actions, .toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
         .status {
             min-height: 22px;
             color: var(--muted);
@@ -136,7 +145,6 @@
         }
         .status.success { color: var(--accent-strong); }
         .status.error { color: var(--danger); }
-        .status.info { color: var(--info); }
         .hide { display: none; }
         .list {
             display: grid;
@@ -151,71 +159,29 @@
             border: 1px solid var(--line);
             border-radius: 8px;
             padding: 14px;
-            background: linear-gradient(180deg, rgba(237, 245, 241, 0.96), rgba(247, 250, 248, 0.96));
+            background: rgba(237, 245, 241, 0.9);
         }
-        .email {
-            word-break: break-all;
+        .code {
             font-weight: 900;
+            word-break: break-all;
         }
-        .account-meta {
-            display: grid;
-            gap: 4px;
-        }
-        .account-secret {
+        .meta {
             color: var(--muted);
             font-size: 13px;
-            word-break: break-all;
+            line-height: 1.55;
+            word-break: break-word;
         }
         .empty {
             color: var(--muted);
             padding: 12px 0;
         }
-        .note {
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.7;
-            margin-top: 12px;
-        }
-        .password-field {
-            display: grid;
-            gap: 8px;
-        }
-        .password-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .password-preview {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.82);
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.5;
-        }
-        .toolbar {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        @media (max-width: 860px) {
-            .top,
-            .login-grid,
-            .grid,
-            .item {
+        @media (max-width: 800px) {
+            body { padding: 16px; }
+            .panel { padding: 18px; }
+            .top, .login-grid, .grid, .item, .actions, .toolbar {
                 grid-template-columns: 1fr;
                 display: grid;
             }
-        }
-        @media (max-width: 640px) {
-            body { padding: 16px; }
-            .panel { padding: 18px; }
-            .toolbar { display: grid; }
             button { width: 100%; }
         }
     </style>
@@ -224,20 +190,18 @@
     <main>
         <section class="panel top">
             <div>
-                <h1>邮箱管理台</h1>
-                <p>用于维护可查询验证码的邮箱账号，以及对应的查询密码。</p>
+                <h1>CDK 管理</h1>
+                <p>维护 CDK 和用户验证成功后可查看的信息。</p>
             </div>
             <div class="toolbar">
-                <a href="./cdk.html">CDK 信息提取</a>
-                <a href="./cdk-admin.html">CDK 管理</a>
-                <a href="./privacy.html">添加隐私邮箱</a>
+                <a href="./cdk.html">用户提取页</a>
+                <a href="./admin.html">邮箱管理</a>
                 <a href="./index.html">返回查询页</a>
             </div>
         </section>
 
         <section class="panel">
             <h2>管理员登录</h2>
-            <p>请输入 <code>config/mail.php</code> 中的管理员密码。</p>
             <form id="loginForm" autocomplete="off">
                 <div class="login-grid">
                     <label>管理员密码
@@ -250,41 +214,51 @@
         </section>
 
         <section id="managePanel" class="panel hide">
-            <h2>添加或更新账号</h2>
-            <p>保存会覆盖该邮箱现有的查询密码，系统会按原有方式存储密码哈希。</p>
-            <form id="accountForm" autocomplete="off">
+            <h2>添加或更新 CDK</h2>
+            <form id="cdkForm" autocomplete="off">
                 <div class="grid">
-                    <label>邮箱
-                        <input id="emailInput" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="name@example.com" required />
+                    <label>CDK
+                        <input id="cdkInput" type="text" autocomplete="off" spellcheck="false" placeholder="保存后系统自动生成" readonly />
                     </label>
-                    <label class="password-field">查询密码
-                        <input id="passwordInput" type="text" autocomplete="new-password" required />
+                    <label>标题
+                        <input id="titleInput" type="text" autocomplete="off" placeholder="提取信息" required />
                     </label>
-                    <button id="saveBtn" type="submit">保存</button>
-                    <button id="generateBtn" class="secondary" type="button">重新生成</button>
+                </div>
+                <label>可查看信息
+                    <textarea id="contentInput" required placeholder="用户验证 CDK 后会看到这里的内容。"></textarea>
+                </label>
+                <label class="check-row">
+                    <input id="enabledInput" type="checkbox" checked />
+                    启用这个 CDK
+                </label>
+                <div class="actions">
+                    <button id="saveBtn" type="submit">保存 CDK</button>
+                    <button id="clearBtn" class="secondary" type="button">清空表单</button>
                 </div>
             </form>
-            <div class="note">查询密码会自动生成，内容由字母和数字组成。保存前你也可以手动修改。</div>
         </section>
 
         <section id="listPanel" class="panel hide">
-            <h2>已配置账号</h2>
-            <div id="accountList" class="list"></div>
+            <h2>已配置 CDK</h2>
+            <div id="cdkList" class="list"></div>
         </section>
     </main>
+
     <script>
         const loginForm = document.getElementById("loginForm");
-        const accountForm = document.getElementById("accountForm");
+        const cdkForm = document.getElementById("cdkForm");
         const adminPasswordInput = document.getElementById("adminPassword");
-        const emailInput = document.getElementById("emailInput");
-        const passwordInput = document.getElementById("passwordInput");
+        const cdkInput = document.getElementById("cdkInput");
+        const titleInput = document.getElementById("titleInput");
+        const contentInput = document.getElementById("contentInput");
+        const enabledInput = document.getElementById("enabledInput");
         const loadBtn = document.getElementById("loadBtn");
         const saveBtn = document.getElementById("saveBtn");
-        const generateBtn = document.getElementById("generateBtn");
-                const statusEl = document.getElementById("status");
+        const clearBtn = document.getElementById("clearBtn");
+        const statusEl = document.getElementById("status");
         const managePanel = document.getElementById("managePanel");
         const listPanel = document.getElementById("listPanel");
-        const accountList = document.getElementById("accountList");
+        const cdkList = document.getElementById("cdkList");
         let currentAdminPassword = "";
 
         function setStatus(type, message) {
@@ -292,34 +266,14 @@
             statusEl.textContent = message;
         }
 
-        function generatePassword(length = 16) {
-            const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-            const bytes = new Uint8Array(length);
-            crypto.getRandomValues(bytes);
-            let value = "";
-            for (const byte of bytes) {
-                value += alphabet[byte % alphabet.length];
-            }
-            return value;
-        }
-
-        function preparePassword() {
-            passwordInput.value = generatePassword();
-            passwordInput.type = "text";
-        }
-
         function setPanelsVisible(visible) {
             managePanel.classList.toggle("hide", !visible);
             listPanel.classList.toggle("hide", !visible);
-            if (!visible) {
-                accountList.replaceChildren();
-            } else {
-                preparePassword();
-            }
+            if (!visible) cdkList.replaceChildren();
         }
 
-        async function adminRequest(action, payload = {}) {
-            const response = await fetch("./api/admin.php", {
+        async function cdkRequest(action, payload = {}) {
+            const response = await fetch("./api/cdk.php", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
                 body: JSON.stringify({ action, admin_password: currentAdminPassword, ...payload }),
@@ -329,74 +283,85 @@
             return result;
         }
 
-        function renderAccounts(accounts) {
-            accountList.replaceChildren();
-            const items = Array.isArray(accounts) ? accounts : [];
+        function resetForm() {
+            cdkInput.value = "";
+            titleInput.value = "";
+            contentInput.value = "";
+            enabledInput.checked = true;
+            titleInput.focus();
+        }
+
+        function renderRecords(records) {
+            cdkList.replaceChildren();
+            const items = Array.isArray(records) ? records : [];
             if (!items.length) {
                 const empty = document.createElement("div");
                 empty.className = "empty";
-                empty.textContent = "当前没有配置任何账号。";
-                accountList.append(empty);
+                empty.textContent = "当前没有配置任何 CDK。";
+                cdkList.append(empty);
                 return;
             }
 
             items.forEach((item) => {
-                const email = String(item.email || "");
-                const password = String(item.access_password || "");
+                const code = String(item.cdk || "");
+                const title = String(item.title || "");
+                const content = String(item.content || "");
+                const enabled = Boolean(item.enabled);
+
                 const row = document.createElement("div");
                 row.className = "item";
 
-                const metaEl = document.createElement("div");
-                metaEl.className = "account-meta";
-                const emailEl = document.createElement("div");
-                emailEl.className = "email";
-                emailEl.textContent = email;
-                const secretEl = document.createElement("div");
-                secretEl.className = "account-secret";
-                secretEl.textContent = password ? `密码：${password}` : "密码：已隐藏";
-                metaEl.append(emailEl, secretEl);
-
-                const copyBtn = document.createElement("button");
-                copyBtn.type = "button";
-                copyBtn.className = "secondary";
-                copyBtn.textContent = "复制账号和密码";
-                copyBtn.addEventListener("click", async () => {
-                    const text = `${email}\t${password}`;
-                    try {
-                        await navigator.clipboard.writeText(text);
-                        setStatus("success", "已复制账号和密码。");
-                    } catch (error) {
-                        setStatus("error", "复制失败，请手动选择文本。");
-                    }
-                });
+                const info = document.createElement("div");
+                const codeEl = document.createElement("div");
+                codeEl.className = "code";
+                codeEl.textContent = code;
+                const meta = document.createElement("div");
+                meta.className = "meta";
+                meta.textContent = `${enabled ? "已启用" : "已停用"} · ${title || "无标题"} · ${content.slice(0, 80)}`;
+                info.append(codeEl, meta);
 
                 const editBtn = document.createElement("button");
                 editBtn.type = "button";
                 editBtn.className = "secondary";
-                editBtn.textContent = "编辑密码";
+                editBtn.textContent = "编辑";
                 editBtn.addEventListener("click", () => {
-                    emailInput.value = email;
-                    preparePassword();
-                    passwordInput.focus();
-                    setStatus("info", "已为该邮箱生成新的查询密码，可以直接保存或继续修改。");
+                    cdkInput.value = code;
+                    titleInput.value = title;
+                    contentInput.value = content;
+                    enabledInput.checked = enabled;
+                    contentInput.focus();
+                    setStatus("", "已载入 CDK，可以修改后保存。");
+                });
+
+                const copyBtn = document.createElement("button");
+                copyBtn.type = "button";
+                copyBtn.className = "secondary";
+                copyBtn.textContent = "复制 CDK";
+                copyBtn.addEventListener("click", async () => {
+                    try {
+                        await navigator.clipboard.writeText(code);
+                        setStatus("success", "CDK 已复制。");
+                    } catch (_) {
+                        setStatus("error", "复制失败，请手动选择 CDK。");
+                    }
                 });
 
                 const deleteBtn = document.createElement("button");
                 deleteBtn.type = "button";
                 deleteBtn.className = "danger";
                 deleteBtn.textContent = "删除";
-                deleteBtn.addEventListener("click", () => deleteAccount(email));
+                deleteBtn.addEventListener("click", () => deleteRecord(code));
 
-                row.append(metaEl, copyBtn, editBtn, deleteBtn);
-                accountList.append(row);
+                row.append(info, copyBtn, editBtn, deleteBtn);
+                cdkList.append(row);
             });
         }
 
-        async function deleteAccount(email) {
-            if (!confirm(`确定删除 ${email} 吗？`)) return;
+        async function deleteRecord(code) {
+            if (!confirm(`确定删除 ${code} 吗？`)) return;
             try {
-                const result = await adminRequest("delete", { email });
-                renderAccounts(result.data.accounts || []);
+                const result = await cdkRequest("delete", { cdk: code });
+                renderRecords(result.data.records || []);
                 setStatus("success", "已删除。");
             } catch (error) {
                 setStatus("error", error.message || "删除失败。");
@@ -407,15 +372,14 @@
             event.preventDefault();
             const password = adminPasswordInput.value.trim();
             if (!password) return setStatus("error", "请输入管理员密码。");
-
             currentAdminPassword = password;
             loadBtn.disabled = true;
             loadBtn.textContent = "加载中...";
             try {
-                const result = await adminRequest("list");
+                const result = await cdkRequest("list");
                 setPanelsVisible(true);
-                renderAccounts(result.data.accounts || []);
-                setStatus("success", "管理台已加载。");
+                renderRecords(result.data.records || []);
+                setStatus("success", "CDK 管理已加载。");
             } catch (error) {
                 currentAdminPassword = "";
                 setPanelsVisible(false);
@@ -426,34 +390,28 @@
             }
         });
 
-        accountForm.addEventListener("submit", async (event) => {
+        cdkForm.addEventListener("submit", async (event) => {
             event.preventDefault();
-            const email = emailInput.value.trim();
-            const password = passwordInput.value.trim();
-            if (!email || !password) return setStatus("error", "请填写邮箱和查询密码。");
-
+            const cdk = cdkInput.value.trim().toUpperCase();
+            const title = titleInput.value.trim();
+            const content = contentInput.value.trim();
+            if (!title || !content) return setStatus("error", "请填写标题和卡密信息。");
             saveBtn.disabled = true;
             saveBtn.textContent = "保存中...";
             try {
-                const result = await adminRequest("save", { email, access_password: password });
-                renderAccounts(result.data.accounts || []);
-                emailInput.value = "";
-                preparePassword();
-                emailInput.focus();
-                setStatus("success", "已保存。");
+                const result = await cdkRequest("save", { cdk, title, content, enabled: enabledInput.checked });
+                renderRecords(result.data.records || []);
+                resetForm();
+                setStatus("success", cdk ? "CDK 已保存。" : "CDK 已自动生成并保存。");
             } catch (error) {
                 setStatus("error", error.message || "保存失败。");
             } finally {
                 saveBtn.disabled = false;
-                saveBtn.textContent = "保存";
+                saveBtn.textContent = "保存 CDK";
             }
         });
 
-        generateBtn.addEventListener("click", () => {
-            preparePassword();
-            passwordInput.focus();
-            setStatus("info", "已重新生成查询密码。");
-        });
+        clearBtn.addEventListener("click", resetForm);
         setPanelsVisible(false);
     </script>
 </body>

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CDK 信息提取</title>
+    <style>
+        * { box-sizing: border-box; }
+        :root {
+            --bg: #eef2ef;
+            --panel: rgba(255, 253, 248, 0.94);
+            --line: rgba(24, 38, 33, 0.12);
+            --ink: #13211c;
+            --muted: #5d6964;
+            --accent: #0c6b5b;
+            --accent-strong: #094e42;
+            --danger: #b23333;
+            --shadow: 0 28px 70px rgba(20, 33, 29, 0.13);
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 24px;
+            color: var(--ink);
+            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+            background:
+                linear-gradient(135deg, rgba(12, 107, 91, 0.11), transparent 33%),
+                linear-gradient(320deg, rgba(154, 100, 16, 0.08), transparent 30%),
+                var(--bg);
+        }
+        main {
+            width: min(880px, 100%);
+            margin: 0 auto;
+            display: grid;
+            gap: 16px;
+        }
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 24px;
+            backdrop-filter: blur(10px);
+        }
+        h1, h2 {
+            margin: 0 0 8px;
+            letter-spacing: 0;
+        }
+        h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1.08; }
+        h2 { font-size: 22px; }
+        p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.75;
+        }
+        a {
+            color: var(--accent-strong);
+            font-weight: 800;
+            text-decoration: none;
+        }
+        a:hover { text-decoration: underline; }
+        form {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: end;
+        }
+        label {
+            display: grid;
+            gap: 7px;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 800;
+        }
+        input, textarea {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.96);
+            color: var(--ink);
+            padding: 13px 14px;
+            font-size: 15px;
+            outline: none;
+        }
+        input {
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        input:focus, textarea:focus {
+            border-color: rgba(12, 107, 91, 0.45);
+            box-shadow: 0 0 0 3px rgba(12, 107, 91, 0.12);
+        }
+        button {
+            border: 0;
+            border-radius: 8px;
+            background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+            color: #fff;
+            padding: 14px 18px;
+            min-height: 46px;
+            font-weight: 900;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        button.secondary {
+            background: #e7f2ee;
+            color: var(--accent-strong);
+            border: 1px solid rgba(12, 107, 91, 0.18);
+        }
+        button:disabled {
+            opacity: 0.62;
+            cursor: not-allowed;
+        }
+        .status {
+            min-height: 22px;
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .status.success { color: var(--accent-strong); }
+        .status.error { color: var(--danger); }
+        .result {
+            display: none;
+            gap: 14px;
+        }
+        .result.show { display: grid; }
+        .content {
+            white-space: pre-wrap;
+            word-break: break-word;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.76);
+            padding: 16px;
+            line-height: 1.75;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        @media (max-width: 700px) {
+            body { padding: 16px; }
+            .panel { padding: 18px; }
+            form, .actions { grid-template-columns: 1fr; display: grid; }
+            button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <section class="panel">
+            <h1>CDK 信息提取</h1>
+            <p>输入你的 CDK，验证成功后即可查看对应信息。</p>
+            <p><a href="./index.html">返回验证码查询</a></p>
+        </section>
+
+        <section class="panel">
+            <form id="cdkForm" autocomplete="off">
+                <label>CDK
+                    <input id="cdkInput" type="text" autocomplete="off" spellcheck="false" placeholder="DEMO-1234" required />
+                </label>
+                <button id="submitBtn" type="submit">验证并提取</button>
+            </form>
+            <div id="status" class="status">等待输入 CDK。</div>
+        </section>
+
+        <section id="resultPanel" class="panel result" aria-live="polite">
+            <h2 id="resultTitle">提取结果</h2>
+            <div id="resultContent" class="content"></div>
+            <div class="actions">
+                <button id="copyBtn" type="button">复制信息</button>
+                <button id="resetBtn" class="secondary" type="button">继续查询</button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const cdkForm = document.getElementById("cdkForm");
+        const cdkInput = document.getElementById("cdkInput");
+        const submitBtn = document.getElementById("submitBtn");
+        const statusEl = document.getElementById("status");
+        const resultPanel = document.getElementById("resultPanel");
+        const resultTitle = document.getElementById("resultTitle");
+        const resultContent = document.getElementById("resultContent");
+        const copyBtn = document.getElementById("copyBtn");
+        const resetBtn = document.getElementById("resetBtn");
+
+        function setStatus(type, message) {
+            statusEl.className = "status" + (type ? " " + type : "");
+            statusEl.textContent = message;
+        }
+
+        function setLoading(loading) {
+            submitBtn.disabled = loading;
+            submitBtn.textContent = loading ? "验证中..." : "验证并提取";
+        }
+
+        cdkForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const cdk = cdkInput.value.trim().toUpperCase();
+            if (!cdk) {
+                setStatus("error", "请输入 CDK。");
+                return;
+            }
+
+            setLoading(true);
+            resultPanel.classList.remove("show");
+            setStatus("", "正在验证 CDK...");
+            try {
+                const response = await fetch("./api/cdk.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+                    body: JSON.stringify({ action: "verify", cdk }),
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || "CDK 验证失败。");
+                }
+
+                const data = result.data || {};
+                resultTitle.textContent = data.title || "提取结果";
+                resultContent.textContent = data.content || "";
+                resultPanel.classList.add("show");
+                setStatus("success", "验证成功，信息已提取。");
+            } catch (error) {
+                setStatus("error", error.message || "CDK 验证失败。");
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        copyBtn.addEventListener("click", async () => {
+            try {
+                await navigator.clipboard.writeText(resultContent.textContent || "");
+                setStatus("success", "信息已复制。");
+            } catch (_) {
+                setStatus("error", "复制失败，请手动选择文本。");
+            }
+        });
+
+        resetBtn.addEventListener("click", () => {
+            resultPanel.classList.remove("show");
+            cdkInput.value = "";
+            cdkInput.focus();
+            setStatus("", "等待输入 CDK。");
+        });
+    </script>
+</body>
+</html>

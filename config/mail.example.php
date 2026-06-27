@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 return [
     "admin_panel" => [
-        "password" => "admin123",
+        "password" => "change-this-admin-password",
     ],
 
     "access_accounts" => [

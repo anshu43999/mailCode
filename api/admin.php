@@ -3,16 +3,14 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . "/lib/api_helpers.php";
 require_once dirname(__DIR__) . "/lib/account_store.php";
+require_once dirname(__DIR__) . "/lib/security.php";
 
 $config = api_load_config();
 $request = api_request_data();
 $action = strtolower(trim((string) ($request["action"] ?? "list")));
 $adminPassword = trim((string) ($request["admin_password"] ?? ""));
-$expectedPassword = trim((string) ($config["admin_panel"]["password"] ?? "admin123"));
 
-if ($adminPassword === "" || !hash_equals($expectedPassword, $adminPassword)) {
-    api_fail("Admin password is incorrect.", 403);
-}
+security_require_admin_password($config, $adminPassword, "admin_accounts");
 
 if (!in_array($action, ["list", "save", "delete"], true)) {
     api_fail("Unsupported action.", 400);
@@ -34,12 +32,15 @@ if ($action === "save") {
         api_fail("Query password is required.", 400);
     }
 
-    $accounts[$email] = accounts_hash_password($password);
+    $accounts[$email] = [
+        "hash" => accounts_hash_password($password),
+        "secret" => accounts_encrypt_password($password, $adminPassword, $email),
+    ];
     if (!accounts_save_file($accounts)) {
         api_fail("Failed to save account.", 500);
     }
 
-    api_ok(["accounts" => accounts_payload($accounts)], "Saved.");
+    api_ok(["accounts" => accounts_payload($accounts, $adminPassword)], "Saved.");
 }
 
 if ($action === "delete") {
@@ -53,7 +54,7 @@ if ($action === "delete") {
         api_fail("Failed to delete account.", 500);
     }
 
-    api_ok(["accounts" => accounts_payload($accounts)], "Deleted.");
+    api_ok(["accounts" => accounts_payload($accounts, $adminPassword)], "Deleted.");
 }
 
-api_ok(["accounts" => accounts_payload($accounts)], "Loaded.");
+api_ok(["accounts" => accounts_payload($accounts, $adminPassword)], "Loaded.");
