@@ -11,7 +11,7 @@ docker compose up -d --build
 Open:
 
 ```text
-http://SERVER_IP:8080/
+http://SERVER_IP:8090/
 ```
 
 Pages:
