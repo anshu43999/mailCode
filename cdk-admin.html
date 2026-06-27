@@ -186,6 +186,7 @@
             line-height: 1.12;
             letter-spacing: 0.03em;
             word-break: break-all;
+            user-select: all;
         }
         .status-pill {
             display: inline-flex;
@@ -386,11 +387,23 @@
             }
         }
 
-        async function copyText(text) {
+        function selectElementText(element) {
+            if (!element) return false;
+            const selection = window.getSelection && window.getSelection();
+            if (!selection) return false;
+
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            return true;
+        }
+
+        async function copyText(text, sourceElement = null) {
             const value = String(text || "");
             if (!value) return false;
 
-            if (navigator.clipboard && window.isSecureContext) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
                 try {
                     await navigator.clipboard.writeText(value);
                     return true;
@@ -415,6 +428,16 @@
                 copied = false;
             }
             textarea.remove();
+            if (copied) return true;
+
+            if (selectElementText(sourceElement)) {
+                try {
+                    copied = document.execCommand("copy");
+                } catch (_) {
+                    copied = false;
+                }
+            }
+
             return copied;
         }
 
@@ -518,11 +541,13 @@
                 copyBtn.type = "button";
                 copyBtn.className = "secondary";
                 copyBtn.textContent = "复制 CDK";
-                copyBtn.addEventListener("click", async () => {
-                    if (await copyText(code)) {
+                copyBtn.addEventListener("click", async (event) => {
+                    event.preventDefault();
+                    if (await copyText(code, codeEl)) {
                         setStatus("success", "CDK 已复制。");
                     } else {
-                        setStatus("error", "复制失败，请手动选择 CDK。");
+                        selectElementText(codeEl);
+                        setStatus("error", "复制失败，已选中 CDK，请按 Ctrl+C 或长按复制。");
                     }
                 });
 
