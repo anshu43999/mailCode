@@ -167,6 +167,10 @@
 
         <section id="resultPanel" class="panel result" aria-live="polite">
             <h2 id="resultTitle">提取结果</h2>
+            <div class="meta">
+                <span>首次提取时间</span>
+                <strong id="firstClaimedAt">-</strong>
+            </div>
             <div id="resultContent" class="content"></div>
             <div class="actions">
                 <button id="copyBtn" type="button">复制信息</button>
@@ -182,6 +186,7 @@
         const statusEl = document.getElementById("status");
         const resultPanel = document.getElementById("resultPanel");
         const resultTitle = document.getElementById("resultTitle");
+        const firstClaimedAt = document.getElementById("firstClaimedAt");
         const resultContent = document.getElementById("resultContent");
         const copyBtn = document.getElementById("copyBtn");
         const resetBtn = document.getElementById("resetBtn");
@@ -290,6 +295,7 @@
 
                 const data = result.data || {};
                 resultTitle.textContent = data.title || "提取结果";
+                firstClaimedAt.textContent = data.first_claimed_at || "未记录";
                 resultContent.textContent = data.content || "";
                 resultPanel.classList.add("show");
                 setStatus("success", "验证成功，信息已提取。");

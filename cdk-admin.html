@@ -378,6 +378,7 @@
                 const title = String(item.title || "");
                 const content = String(item.content || "");
                 const enabled = Boolean(item.enabled);
+                const firstClaimedAt = String(item.first_claimed_at || "");
 
                 const row = document.createElement("div");
                 row.className = "item";
@@ -388,7 +389,7 @@
                 codeEl.textContent = code;
                 const meta = document.createElement("div");
                 meta.className = "meta";
-                meta.textContent = `${enabled ? "已启用" : "已停用"} · ${title || "无标题"} · ${content.slice(0, 80)}`;
+                meta.textContent = `${enabled ? "已启用" : "已停用"} · 首次提取：${firstClaimedAt || "未提取"} · ${title || "无标题"} · ${content.slice(0, 80)}`;
                 info.append(codeEl, meta);
 
                 const editBtn = document.createElement("button");

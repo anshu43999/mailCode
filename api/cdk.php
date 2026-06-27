@@ -46,6 +46,11 @@ if ($action === "verify") {
     }
 
     security_clear_failures("cdk_verify");
+    if (trim((string) ($record["first_claimed_at"] ?? "")) === "") {
+        $record["first_claimed_at"] = date("Y-m-d H:i:s");
+        $records[$code] = $record;
+        cdk_save_file($records);
+    }
     api_ok(cdk_public_payload($code, $record), "验证成功。");
 }
 
@@ -77,6 +82,7 @@ if ($action === "save") {
         "content" => $content,
         "enabled" => $enabled,
         "updated_at" => date("Y-m-d H:i:s"),
+        "first_claimed_at" => (string) ($records[$code]["first_claimed_at"] ?? ""),
     ];
 
     if (!cdk_save_file($records)) {

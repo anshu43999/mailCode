@@ -42,6 +42,7 @@ function cdk_normalize_record(array|string $record): array
             "content" => $record,
             "enabled" => true,
             "updated_at" => "",
+            "first_claimed_at" => "",
         ];
     }
 
@@ -50,6 +51,7 @@ function cdk_normalize_record(array|string $record): array
         "content" => trim((string) ($record["content"] ?? "")),
         "enabled" => (bool) ($record["enabled"] ?? true),
         "updated_at" => trim((string) ($record["updated_at"] ?? "")),
+        "first_claimed_at" => trim((string) ($record["first_claimed_at"] ?? "")),
     ];
 }
 
@@ -102,6 +104,7 @@ function cdk_public_payload(string $code, array $record): array
         "title" => (string) ($record["title"] ?? "CDK 信息"),
         "content" => (string) ($record["content"] ?? ""),
         "updated_at" => (string) ($record["updated_at"] ?? ""),
+        "first_claimed_at" => (string) ($record["first_claimed_at"] ?? ""),
     ];
 }
 
@@ -115,6 +118,7 @@ function cdk_admin_payload(array $records): array
             "content" => (string) ($record["content"] ?? ""),
             "enabled" => (bool) ($record["enabled"] ?? true),
             "updated_at" => (string) ($record["updated_at"] ?? ""),
+            "first_claimed_at" => (string) ($record["first_claimed_at"] ?? ""),
         ];
     }
     return $items;
