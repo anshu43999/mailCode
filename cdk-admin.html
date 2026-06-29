@@ -146,6 +146,32 @@
         .status.success { color: var(--accent-strong); }
         .status.error { color: var(--danger); }
         .hide { display: none; }
+        .list-tools {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .filter-label {
+            width: min(260px, 100%);
+        }
+        select.filter-select {
+            min-height: 42px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.96);
+            color: var(--ink);
+            padding: 0 12px;
+            font-size: 14px;
+            font-weight: 900;
+            outline: none;
+        }
+        select.filter-select:focus {
+            border-color: rgba(12, 107, 91, 0.45);
+            box-shadow: 0 0 0 3px rgba(12, 107, 91, 0.12);
+        }
         #cdkList {
             display: grid;
             gap: 14px;
@@ -232,7 +258,7 @@
         }
         .summary-grid {
             display: grid;
-            grid-template-columns: 1.1fr 1.4fr 0.8fr;
+            grid-template-columns: 1fr 1.4fr;
             gap: 8px;
         }
         .summary-cell {
@@ -307,6 +333,7 @@
                 grid-template-columns: 1fr;
                 display: grid;
             }
+            .list-tools { display: grid; }
             .summary-grid { grid-template-columns: 1fr; }
             .record-actions {
                 display: grid;
@@ -372,6 +399,15 @@
 
         <section id="listPanel" class="panel hide">
             <h2>已配置 CDK</h2>
+            <div class="list-tools">
+                <label class="filter-label">售出状态
+                    <select id="soldFilter" class="filter-select">
+                        <option value="all">全部</option>
+                        <option value="unsold">未卖出</option>
+                        <option value="sold">已卖出</option>
+                    </select>
+                </label>
+            </div>
             <div id="cdkList" class="cdk-list"></div>
         </section>
     </main>
@@ -391,7 +427,9 @@
         const managePanel = document.getElementById("managePanel");
         const listPanel = document.getElementById("listPanel");
         const cdkList = document.getElementById("cdkList");
+        const soldFilter = document.getElementById("soldFilter");
         let currentAdminPassword = "";
+        let currentRecords = [];
 
         function setStatus(type, message) {
             statusEl.className = "status" + (type ? " " + type : "");
@@ -517,11 +555,18 @@
 
         function renderRecords(records) {
             cdkList.replaceChildren();
-            const items = Array.isArray(records) ? records : [];
+            currentRecords = Array.isArray(records) ? records : [];
+            const filter = soldFilter ? soldFilter.value : "all";
+            const items = currentRecords.filter((item) => {
+                const sold = Boolean(item && item.sold);
+                if (filter === "sold") return sold;
+                if (filter === "unsold") return !sold;
+                return true;
+            });
             if (!items.length) {
                 const empty = document.createElement("div");
                 empty.className = "empty";
-                empty.textContent = "当前没有配置任何 CDK。";
+                empty.textContent = currentRecords.length ? "当前筛选条件下没有 CDK。" : "当前没有配置任何 CDK。";
                 cdkList.append(empty);
                 return;
             }
@@ -582,7 +627,6 @@
                 [
                     ["首次提取", firstClaimedAt || "未提取"],
                     ["标题", title || "无标题"],
-                    ["内容长度", `${content.length} 字`],
                 ].forEach(([label, value]) => {
                     const cell = document.createElement("div");
                     cell.className = "summary-cell";
@@ -709,6 +753,9 @@
         });
 
         clearBtn.addEventListener("click", resetForm);
+        if (soldFilter) {
+            soldFilter.addEventListener("change", () => renderRecords(currentRecords));
+        }
         setPanelsVisible(false);
     </script>
 </body>

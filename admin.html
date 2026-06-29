@@ -140,31 +140,70 @@
         .hide { display: none; }
         .list {
             display: grid;
-            gap: 10px;
+            gap: 12px;
             margin-top: 16px;
         }
         .item {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto auto auto;
-            gap: 10px;
-            align-items: center;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 14px;
+            align-items: stretch;
             border: 1px solid var(--line);
             border-radius: 8px;
-            padding: 14px;
+            padding: 16px;
             background: linear-gradient(180deg, rgba(237, 245, 241, 0.96), rgba(247, 250, 248, 0.96));
+        }
+        .item-main {
+            min-width: 0;
+            display: grid;
+            gap: 8px;
+        }
+        .item-head {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
         }
         .email {
             word-break: break-all;
             font-weight: 900;
+            font-size: 18px;
+            line-height: 1.25;
         }
         .account-meta {
             display: grid;
-            gap: 4px;
+            gap: 6px;
         }
         .account-secret {
             color: var(--muted);
             font-size: 13px;
             word-break: break-all;
+            line-height: 1.55;
+        }
+        .account-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        .account-actions button {
+            min-height: 40px;
+            padding: 0 14px;
+            box-shadow: none;
+        }
+        .add-cdk {
+            background: linear-gradient(180deg, #f5f2e8, #eadfca);
+            color: #6b4b09;
+            border: 1px solid rgba(154, 100, 16, 0.18);
+        }
+        .add-cdk:disabled {
+            opacity: .65;
+        }
+        .used-toggle.used {
+            border-color: rgba(36, 92, 120, 0.18);
+            color: var(--info);
+            background: #e8f3f8;
         }
         .empty {
             color: var(--muted);
@@ -210,6 +249,9 @@
             .item {
                 grid-template-columns: 1fr;
                 display: grid;
+            }
+            .account-actions {
+                justify-content: flex-start;
             }
         }
         @media (max-width: 640px) {
@@ -283,7 +325,7 @@
         const loadBtn = document.getElementById("loadBtn");
         const saveBtn = document.getElementById("saveBtn");
         const generateBtn = document.getElementById("generateBtn");
-                const statusEl = document.getElementById("status");
+        const statusEl = document.getElementById("status");
         const managePanel = document.getElementById("managePanel");
         const listPanel = document.getElementById("listPanel");
         const accountList = document.getElementById("accountList");
@@ -299,34 +341,6 @@
             try {
                 return JSON.parse(text);
             } catch (_) {
-                const decoder = new TextDecoder();
-                const encoded = new TextEncoder().encode(text);
-                let depth = 0;
-                let inString = false;
-                let escaped = false;
-                for (let i = 0; i < encoded.length; i++) {
-                    const char = decoder.decode(encoded.slice(i, i + 1));
-                    if (escaped) {
-                        escaped = false;
-                        continue;
-                    }
-                    if (char === "\\") {
-                        escaped = inString;
-                        continue;
-                    }
-                    if (char === "\"") {
-                        inString = !inString;
-                        continue;
-                    }
-                    if (inString) continue;
-                    if (char === "{") depth++;
-                    if (char === "}") depth--;
-                    if (depth === 0 && i > 0) {
-                        try {
-                            return JSON.parse(decoder.decode(encoded.slice(0, i + 1)));
-                        } catch (_) {}
-                    }
-                }
                 const detail = text.trim().slice(0, 160);
                 throw new Error(detail ? `接口返回异常：${detail}` : "接口返回异常，请检查服务器日志。");
             }
@@ -380,6 +394,10 @@
             passwordInput.type = "text";
         }
 
+        function buildCdkTitle() {
+            return "账号 -密码-邮箱接码地址-邮件查询密码";
+        }
+
         function setPanelsVisible(visible) {
             managePanel.classList.toggle("hide", !visible);
             listPanel.classList.toggle("hide", !visible);
@@ -416,6 +434,7 @@
                 const email = String(item.email || "");
                 const password = String(item.access_password || "");
                 const used = Boolean(item.used);
+
                 const row = document.createElement("div");
                 row.className = "item";
 
@@ -426,7 +445,7 @@
                 emailEl.textContent = email;
                 const secretEl = document.createElement("div");
                 secretEl.className = "account-secret";
-                secretEl.textContent = password ? `密码：${password}` : "密码：已隐藏";
+                secretEl.textContent = password ? `密钥：${password}` : "密钥：已隐藏";
                 metaEl.append(emailEl, secretEl);
 
                 const usedBtn = document.createElement("button");
@@ -441,6 +460,28 @@
                         setStatus("success", used ? "已标记为未使用。" : "已标记为已使用。");
                     } catch (error) {
                         setStatus("error", error.message || "状态更新失败。");
+                    }
+                });
+
+                const addCdkBtn = document.createElement("button");
+                addCdkBtn.type = "button";
+                addCdkBtn.className = "add-cdk";
+                addCdkBtn.textContent = "添加到CDK";
+                addCdkBtn.addEventListener("click", async () => {
+                    addCdkBtn.disabled = true;
+                    try {
+                        const result = await adminRequest("add_to_cdk", {
+                            email,
+                            source_password: password,
+                            title: buildCdkTitle(),
+                            url: "http://49.51.182.250:8090/index.html",
+                        });
+                        renderAccounts(result.data.accounts || []);
+                        setStatus("success", "已添加到 CDK 列表。");
+                    } catch (error) {
+                        setStatus("error", error.message || "添加到 CDK 失败。");
+                    } finally {
+                        addCdkBtn.disabled = false;
                     }
                 });
 
@@ -474,7 +515,11 @@
                 deleteBtn.textContent = "删除";
                 deleteBtn.addEventListener("click", () => deleteAccount(email));
 
-                row.append(metaEl, usedBtn, copyBtn, editBtn, deleteBtn);
+                const actions = document.createElement("div");
+                actions.className = "account-actions";
+                actions.append(usedBtn, addCdkBtn, copyBtn, editBtn, deleteBtn);
+
+                row.append(metaEl, actions);
                 accountList.append(row);
             });
         }
@@ -502,7 +547,7 @@
                 const result = await adminRequest("list");
                 setPanelsVisible(true);
                 renderAccounts(result.data.accounts || []);
-                setStatus("success", "管理台已加载。");
+                setStatus("success", "管理后台已加载。");
             } catch (error) {
                 currentAdminPassword = "";
                 setPanelsVisible(false);
@@ -541,6 +586,7 @@
             passwordInput.focus();
             setStatus("info", "已重新生成查询密码。");
         });
+
         setPanelsVisible(false);
     </script>
 </body>
