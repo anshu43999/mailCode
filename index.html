@@ -472,8 +472,7 @@
             }
         }
 
-        queryForm.addEventListener("submit", async (event) => {
-            event.preventDefault();
+        async function runQueryFromInputs() {
             const email = targetEmailInput.value.trim();
             const password = accessPasswordInput.value.trim();
             if (!email || !password) {
@@ -489,12 +488,47 @@
             if (started && !autoStopped) {
                 startPolling();
             }
+        }
+
+        queryForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            await runQueryFromInputs();
         });
 
-        const initialEmail = new URLSearchParams(window.location.search).get("email");
-        if (initialEmail) {
-            targetEmailInput.value = initialEmail;
-            renderIdle(initialEmail);
+        function readPresetFromUrl() {
+            const searchParams = new URLSearchParams(window.location.search);
+            const hashText = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+            const hashParams = new URLSearchParams(hashText);
+            const readValue = (...names) => {
+                for (const params of [hashParams, searchParams]) {
+                    for (const name of names) {
+                        const value = params.get(name);
+                        if (value) return value;
+                    }
+                }
+                return "";
+            };
+
+            const autoValue = readValue("auto", "start");
+            return {
+                email: readValue("email", "target_email"),
+                password: readValue("access_password", "password", "query_password"),
+                auto: autoValue === "1" || autoValue.toLowerCase() === "true",
+            };
+        }
+
+        const preset = readPresetFromUrl();
+        if (preset.email) {
+            targetEmailInput.value = preset.email;
+        }
+        if (preset.password) {
+            accessPasswordInput.value = preset.password;
+        }
+        renderIdle(preset.email || "");
+        if (preset.email && preset.password && preset.auto) {
+            window.setTimeout(() => {
+                void runQueryFromInputs();
+            }, 0);
         }
 
         document.addEventListener("visibilitychange", () => {
@@ -503,7 +537,6 @@
         });
 
         window.addEventListener("beforeunload", stopPolling);
-        renderIdle();
     </script>
 </body>
 </html>

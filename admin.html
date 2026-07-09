@@ -138,6 +138,32 @@
         .status.error { color: var(--danger); }
         .status.info { color: var(--info); }
         .hide { display: none; }
+        .list-tools {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .filter-label {
+            width: min(260px, 100%);
+        }
+        select.filter-select {
+            min-height: 42px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.96);
+            color: var(--ink);
+            padding: 0 12px;
+            font-size: 14px;
+            font-weight: 900;
+            outline: none;
+        }
+        select.filter-select:focus {
+            border-color: rgba(12, 107, 91, 0.45);
+            box-shadow: 0 0 0 3px rgba(12, 107, 91, 0.12);
+        }
         .list {
             display: grid;
             gap: 12px;
@@ -253,6 +279,7 @@
             .account-actions {
                 justify-content: flex-start;
             }
+            .list-tools { display: grid; }
         }
         @media (max-width: 640px) {
             body { padding: 16px; }
@@ -313,6 +340,15 @@
 
         <section id="listPanel" class="panel hide">
             <h2>已配置账号</h2>
+            <div class="list-tools">
+                <label class="filter-label">使用状态
+                    <select id="usedFilter" class="filter-select">
+                        <option value="all">全部</option>
+                        <option value="unused">未使用</option>
+                        <option value="used">已使用</option>
+                    </select>
+                </label>
+            </div>
             <div id="accountList" class="list"></div>
         </section>
     </main>
@@ -329,7 +365,9 @@
         const managePanel = document.getElementById("managePanel");
         const listPanel = document.getElementById("listPanel");
         const accountList = document.getElementById("accountList");
+        const usedFilter = document.getElementById("usedFilter");
         let currentAdminPassword = "";
+        let currentAccounts = [];
 
         function setStatus(type, message) {
             statusEl.className = "status" + (type ? " " + type : "");
@@ -398,6 +436,16 @@
             return "账号 -密码-邮箱接码地址-邮件查询密码";
         }
 
+        function buildQueryUrl(email, password) {
+            const url = new URL("./index.html", window.location.href);
+            const params = new URLSearchParams();
+            params.set("email", email);
+            params.set("access_password", password);
+            params.set("auto", "1");
+            url.hash = params.toString();
+            return url.toString();
+        }
+
         function setPanelsVisible(visible) {
             managePanel.classList.toggle("hide", !visible);
             listPanel.classList.toggle("hide", !visible);
@@ -421,11 +469,18 @@
 
         function renderAccounts(accounts) {
             accountList.replaceChildren();
-            const items = Array.isArray(accounts) ? accounts : [];
+            currentAccounts = Array.isArray(accounts) ? accounts : [];
+            const filter = usedFilter ? usedFilter.value : "all";
+            const items = currentAccounts.filter((item) => {
+                const used = Boolean(item && item.used);
+                if (filter === "used") return used;
+                if (filter === "unused") return !used;
+                return true;
+            });
             if (!items.length) {
                 const empty = document.createElement("div");
                 empty.className = "empty";
-                empty.textContent = "当前没有配置任何账号。";
+                empty.textContent = currentAccounts.length ? "当前筛选条件下没有账号。" : "当前没有配置任何账号。";
                 accountList.append(empty);
                 return;
             }
@@ -498,6 +553,23 @@
                     }
                 });
 
+                const queryUrlBtn = document.createElement("button");
+                queryUrlBtn.type = "button";
+                queryUrlBtn.className = "secondary";
+                queryUrlBtn.textContent = "生成接码查询地址";
+                queryUrlBtn.addEventListener("click", async () => {
+                    if (!email || !password) {
+                        setStatus("error", "该账号缺少邮箱或查询密码，无法生成查询地址。");
+                        return;
+                    }
+                    const url = buildQueryUrl(email, password);
+                    if (await copyText(url)) {
+                        setStatus("success", "接码查询地址已生成并复制。");
+                    } else {
+                        setStatus("error", "复制失败，请手动选择文本。");
+                    }
+                });
+
                 const editBtn = document.createElement("button");
                 editBtn.type = "button";
                 editBtn.className = "secondary";
@@ -517,7 +589,7 @@
 
                 const actions = document.createElement("div");
                 actions.className = "account-actions";
-                actions.append(usedBtn, addCdkBtn, copyBtn, editBtn, deleteBtn);
+                actions.append(usedBtn, addCdkBtn, copyBtn, queryUrlBtn, editBtn, deleteBtn);
 
                 row.append(metaEl, actions);
                 accountList.append(row);
@@ -586,6 +658,10 @@
             passwordInput.focus();
             setStatus("info", "已重新生成查询密码。");
         });
+
+        if (usedFilter) {
+            usedFilter.addEventListener("change", () => renderAccounts(currentAccounts));
+        }
 
         setPanelsVisible(false);
     </script>
