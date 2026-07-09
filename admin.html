@@ -446,6 +446,16 @@
             return url.toString();
         }
 
+        function buildAccountTemplate(email, password) {
+            return [
+                `邮箱： ${email}`,
+                "密码： as224096224096",
+                "一次性安全码密钥 ： xxx",
+                "一次性安全码获取地址：2fa.cn",
+                `邮箱接码地址：${buildQueryUrl(email, password)}`,
+            ].join("\n");
+        }
+
         function setPanelsVisible(visible) {
             managePanel.classList.toggle("hide", !visible);
             listPanel.classList.toggle("hide", !visible);
@@ -540,31 +550,18 @@
                     }
                 });
 
-                const copyBtn = document.createElement("button");
-                copyBtn.type = "button";
-                copyBtn.className = "secondary";
-                copyBtn.textContent = "复制账号和密码";
-                copyBtn.addEventListener("click", async () => {
-                    const text = `${email}\t${password}`;
-                    if (await copyText(text)) {
-                        setStatus("success", "已复制账号和密码。");
-                    } else {
-                        setStatus("error", "复制失败，请手动选择文本。");
-                    }
-                });
-
-                const queryUrlBtn = document.createElement("button");
-                queryUrlBtn.type = "button";
-                queryUrlBtn.className = "secondary";
-                queryUrlBtn.textContent = "生成接码查询地址";
-                queryUrlBtn.addEventListener("click", async () => {
+                const templateBtn = document.createElement("button");
+                templateBtn.type = "button";
+                templateBtn.className = "secondary";
+                templateBtn.textContent = "复制账号模板";
+                templateBtn.addEventListener("click", async () => {
                     if (!email || !password) {
-                        setStatus("error", "该账号缺少邮箱或查询密码，无法生成查询地址。");
+                        setStatus("error", "该账号缺少邮箱或查询密码，无法复制账号模板。");
                         return;
                     }
-                    const url = buildQueryUrl(email, password);
-                    if (await copyText(url)) {
-                        setStatus("success", "接码查询地址已生成并复制。");
+                    const text = buildAccountTemplate(email, password);
+                    if (await copyText(text)) {
+                        setStatus("success", "账号模板已复制。");
                     } else {
                         setStatus("error", "复制失败，请手动选择文本。");
                     }
@@ -589,7 +586,7 @@
 
                 const actions = document.createElement("div");
                 actions.className = "account-actions";
-                actions.append(usedBtn, addCdkBtn, copyBtn, queryUrlBtn, editBtn, deleteBtn);
+                actions.append(usedBtn, addCdkBtn, templateBtn, editBtn, deleteBtn);
 
                 row.append(metaEl, actions);
                 accountList.append(row);
