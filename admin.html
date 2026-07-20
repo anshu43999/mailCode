@@ -226,10 +226,31 @@
         .add-cdk:disabled {
             opacity: .65;
         }
-        .used-toggle.used {
+        select.account-status {
+            min-height: 40px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.96);
+            color: var(--ink);
+            padding: 0 12px;
+            font-size: 14px;
+            font-weight: 900;
+            outline: none;
+        }
+        select.account-status.used {
             border-color: rgba(36, 92, 120, 0.18);
             color: var(--info);
             background: #e8f3f8;
+        }
+        select.account-status.no_free {
+            border-color: rgba(176, 89, 14, 0.22);
+            color: #9a4f09;
+            background: #fff3df;
+        }
+        select.account-status.retention {
+            border-color: rgba(12, 107, 91, 0.2);
+            color: var(--accent-strong);
+            background: #e8f7f0;
         }
         .empty {
             color: var(--muted);
@@ -341,11 +362,13 @@
         <section id="listPanel" class="panel hide">
             <h2>已配置账号</h2>
             <div class="list-tools">
-                <label class="filter-label">使用状态
+                <label class="filter-label">账号状态
                     <select id="usedFilter" class="filter-select">
                         <option value="all">全部</option>
                         <option value="unused">未使用</option>
                         <option value="used">已使用</option>
+                        <option value="no_free">无free</option>
+                        <option value="retention">待留存</option>
                     </select>
                 </label>
             </div>
@@ -368,6 +391,13 @@
         const usedFilter = document.getElementById("usedFilter");
         let currentAdminPassword = "";
         let currentAccounts = [];
+        const accountStatusOptions = [
+            ["unused", "未使用"],
+            ["used", "已使用"],
+            ["no_free", "无free"],
+            ["retention", "待留存"],
+        ];
+        const accountStatusLabels = Object.fromEntries(accountStatusOptions);
 
         function setStatus(type, message) {
             statusEl.className = "status" + (type ? " " + type : "");
@@ -456,6 +486,12 @@
             ].join("\n");
         }
 
+        function getAccountStatus(item) {
+            const status = String((item && item.status) || "");
+            if (accountStatusLabels[status]) return status;
+            return item && item.used ? "used" : "unused";
+        }
+
         function setPanelsVisible(visible) {
             managePanel.classList.toggle("hide", !visible);
             listPanel.classList.toggle("hide", !visible);
@@ -482,9 +518,8 @@
             currentAccounts = Array.isArray(accounts) ? accounts : [];
             const filter = usedFilter ? usedFilter.value : "all";
             const items = currentAccounts.filter((item) => {
-                const used = Boolean(item && item.used);
-                if (filter === "used") return used;
-                if (filter === "unused") return !used;
+                const status = getAccountStatus(item);
+                if (filter !== "all") return status === filter;
                 return true;
             });
             if (!items.length) {
@@ -498,7 +533,7 @@
             items.forEach((item) => {
                 const email = String(item.email || "");
                 const password = String(item.access_password || "");
-                const used = Boolean(item.used);
+                const status = getAccountStatus(item);
 
                 const row = document.createElement("div");
                 row.className = "item";
@@ -513,18 +548,29 @@
                 secretEl.textContent = password ? `密钥：${password}` : "密钥：已隐藏";
                 metaEl.append(emailEl, secretEl);
 
-                const usedBtn = document.createElement("button");
-                usedBtn.type = "button";
-                usedBtn.className = "secondary used-toggle" + (used ? " used" : "");
-                usedBtn.textContent = used ? "已使用" : "未使用";
-                usedBtn.title = used ? "点击标记为未使用" : "点击标记为已使用";
-                usedBtn.addEventListener("click", async () => {
+                const statusSelect = document.createElement("select");
+                statusSelect.className = "account-status " + status;
+                statusSelect.title = "修改账号状态";
+                accountStatusOptions.forEach(([value, label]) => {
+                    const option = document.createElement("option");
+                    option.value = value;
+                    option.textContent = label;
+                    option.selected = value === status;
+                    statusSelect.append(option);
+                });
+                statusSelect.addEventListener("change", async () => {
+                    const nextStatus = statusSelect.value;
+                    statusSelect.disabled = true;
                     try {
-                        const result = await adminRequest("set_used", { email, used: !used });
+                        const result = await adminRequest("set_status", { email, status: nextStatus });
                         renderAccounts(result.data.accounts || []);
-                        setStatus("success", used ? "已标记为未使用。" : "已标记为已使用。");
+                        setStatus("success", `已标记为${accountStatusLabels[nextStatus] || "新状态"}。`);
                     } catch (error) {
+                        statusSelect.value = status;
+                        statusSelect.className = "account-status " + status;
                         setStatus("error", error.message || "状态更新失败。");
+                    } finally {
+                        statusSelect.disabled = false;
                     }
                 });
 
@@ -586,7 +632,7 @@
 
                 const actions = document.createElement("div");
                 actions.className = "account-actions";
-                actions.append(usedBtn, addCdkBtn, templateBtn, editBtn, deleteBtn);
+                actions.append(statusSelect, addCdkBtn, templateBtn, editBtn, deleteBtn);
 
                 row.append(metaEl, actions);
                 accountList.append(row);

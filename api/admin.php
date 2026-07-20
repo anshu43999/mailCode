@@ -13,7 +13,7 @@ $adminPassword = trim((string) ($request["admin_password"] ?? ""));
 
 security_require_admin_password($config, $adminPassword, "admin_accounts");
 
-if (!in_array($action, ["list", "save", "delete", "set_used", "add_to_cdk"], true)) {
+if (!in_array($action, ["list", "save", "delete", "set_used", "set_status", "add_to_cdk"], true)) {
     api_fail("不支持的操作。", 400);
 }
 
@@ -33,10 +33,12 @@ if ($action === "save") {
         api_fail("请填写查询密码。", 400);
     }
 
+    $existingStatus = accounts_normalize_status((string) ($accounts[$email]["status"] ?? ""), !empty($accounts[$email]["used"]));
     $accounts[$email] = [
         "hash" => accounts_hash_password($password),
         "secret" => accounts_encrypt_password($password, $adminPassword, $email),
-        "used" => !empty($accounts[$email]["used"]),
+        "used" => $existingStatus === "used",
+        "status" => $existingStatus,
     ];
     if (!accounts_save_file($accounts)) {
         api_fail("账号保存失败。", 500);
@@ -69,6 +71,29 @@ if ($action === "set_used") {
     }
 
     $accounts[$email]["used"] = (bool) ($request["used"] ?? false);
+    $accounts[$email]["status"] = $accounts[$email]["used"] ? "used" : "unused";
+    if (!accounts_save_file($accounts)) {
+        api_fail("账号状态保存失败。", 500);
+    }
+
+    api_ok(["accounts" => accounts_payload($accounts, $adminPassword)], "状态已更新。");
+}
+
+if ($action === "set_status") {
+    $email = api_normalize_email((string) ($request["email"] ?? ""));
+    $status = strtolower(trim((string) ($request["status"] ?? "")));
+    if ($email === "") {
+        api_fail("请填写邮箱。", 400);
+    }
+    if (!isset($accounts[$email])) {
+        api_fail("账号不存在。", 404);
+    }
+    if (!in_array($status, accounts_status_values(), true)) {
+        api_fail("账号状态不正确。", 400);
+    }
+
+    $accounts[$email]["status"] = $status;
+    $accounts[$email]["used"] = $status === "used";
     if (!accounts_save_file($accounts)) {
         api_fail("账号状态保存失败。", 500);
     }

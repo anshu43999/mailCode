@@ -8,6 +8,17 @@ function accounts_file_path(): string
     return dirname(__DIR__) . "/config/access_accounts.json";
 }
 
+function accounts_status_values(): array
+{
+    return ["unused", "used", "no_free", "retention"];
+}
+
+function accounts_normalize_status(string $status, bool $used = false): string
+{
+    $status = strtolower(trim($status));
+    return in_array($status, accounts_status_values(), true) ? $status : ($used ? "used" : "unused");
+}
+
 function accounts_normalize_map(array $accounts): array
 {
     $normalized = [];
@@ -20,15 +31,19 @@ function accounts_normalize_map(array $accounts): array
             $hash = (string) ($record["hash"] ?? $record["password_hash"] ?? $record["password"] ?? "");
             $secret = array_key_exists("secret", $record) ? (string) $record["secret"] : "";
             $used = (bool) ($record["used"] ?? false);
+            $status = accounts_normalize_status((string) ($record["status"] ?? ""), $used);
         } else {
             $hash = (string) $record;
             $secret = "";
             $used = false;
+            $status = "unused";
         }
+        $used = $status === "used";
         $normalized[$normalizedEmail] = [
             "hash" => $hash,
             "secret" => $secret,
             "used" => $used,
+            "status" => $status,
         ];
     }
     ksort($normalized);
@@ -162,6 +177,7 @@ function accounts_payload_with_admin_password(array $accounts, ?string $adminPas
         $item = [
             "email" => $email,
             "used" => !empty($record["used"]),
+            "status" => accounts_normalize_status((string) ($record["status"] ?? ""), !empty($record["used"])),
         ];
         if ($adminPassword !== null) {
             $secret = (string) ($record["secret"] ?? "");
